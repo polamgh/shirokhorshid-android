@@ -96,6 +96,12 @@ fun AzadiSupportScreen(
 
                 if (isLoading) {
                     LoadingCard()
+                } else if (products.isEmpty()) {
+                    EmptyProductsCard { store.startConnection() }
+                    LegalFooter()
+                    RestoreFooter {
+                        store.queryPurchases()
+                    }
                 } else {
                     TipsSection(products) { product ->
                         (context as? Activity)?.let { store.purchase(it, product) }
@@ -366,11 +372,11 @@ private fun SubscriptionRow(
     highlight: Boolean,
     onPurchase: (ProductDetails) -> Unit
 ) {
-    val basePlanId = if (product.productId == SupportStoreManager.PRODUCT_SUPPORT_MONTHLY) "monthly" else "yearly"
-    
-    // Find matching offer for correct pricing
-    val matchingOffer = product.subscriptionOfferDetails?.firstOrNull { it.basePlanId == basePlanId }
-    val price = matchingOffer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice ?: ""
+    // Select active offer returned by Google Play without requiring specific basePlanId
+    val offer = product.subscriptionOfferDetails?.firstOrNull()
+    val price = offer?.pricingPhases?.pricingPhaseList?.firstOrNull()?.formattedPrice
+        ?: offer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice
+        ?: ""
 
     GlassCard(
         elevated = highlight,
@@ -469,6 +475,39 @@ private enum class SupportTipStyle(val icon: ImageVector, val gradient: List<Col
             id.contains("small") -> SMALL
             id.contains("medium") -> MEDIUM
             else -> LARGE
+        }
+    }
+}
+
+@Composable
+private fun EmptyProductsCard(onRetry: () -> Unit) {
+    GlassCard {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = AppColors.SubtitleText,
+                modifier = Modifier.size(28.dp)
+            )
+            Text(
+                text = "No products retrieved from Google Play",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
+            )
+            Text(
+                text = "Please verify your Play Store tester account and connection.",
+                style = MaterialTheme.typography.bodySmall,
+                color = AppColors.SubtitleText
+            )
+            Spacer(Modifier.height(4.dp))
+            OutlinedButton(onClick = onRetry) {
+                Text("Retry Fetching Products", color = AppColors.NavBlue)
+            }
         }
     }
 }

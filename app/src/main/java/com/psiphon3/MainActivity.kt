@@ -109,6 +109,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
         lifecycle.addObserver(viewModel)
 
         LogsMaintenanceWorker.schedule(applicationContext)
+        SupportStoreManager.getInstance(applicationContext).startConnection()
 
         val startupLanguage = azadiSettingsStore.load().preferredLanguage.ifEmpty { "system" }
         AppLocaleHelper.applyToActivity(this, startupLanguage)
