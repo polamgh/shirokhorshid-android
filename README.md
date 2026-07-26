@@ -1,4 +1,4 @@
-# Shir o Khorshid
+# Azadi Tunnel
 
 An unofficial, independently maintained build of the [Psiphon](https://psiphon.ca) open-source Android client.
 
@@ -10,7 +10,7 @@ For the official Psiphon application, visit: https://psiphon.ca
 
 ## What is this?
 
-Shir o Khorshid is a community-driven, modded build of the Psiphon open-source client. It adds extra controls and settings to give users more flexibility over their connection. Based on [Psiphon's open-source Android client](https://github.com/Psiphon-Inc/psiphon-android).
+Azadi Tunnel is a community-driven, modded build of the Psiphon open-source client. It is forked from the [shirokhorshid](https://github.com/shirokhorshid/shirokhorshid-android) project. It adds extra controls and settings to give users more flexibility over their connection. Based on [Psiphon's open-source Android client](https://github.com/Psiphon-Inc/psiphon-android).
 
 ## License
 

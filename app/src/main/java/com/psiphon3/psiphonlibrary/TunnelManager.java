@@ -21,7 +21,6 @@ package com.psiphon3.psiphonlibrary;
 
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
 
-import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -33,6 +32,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.net.VpnService;
 import android.net.VpnService.Builder;
@@ -53,9 +53,7 @@ import androidx.core.content.PermissionChecker;
 
 import com.jakewharton.rxrelay2.PublishRelay;
 import com.psiphon3.BuildConfig;
-import com.psiphon3.Location;
 import com.psiphon3.PackageHelper;
-import com.psiphon3.PsiphonCrashService;
 import com.psiphon3.R;
 import com.psiphon3.TunnelState;
 import com.psiphon3.VpnManager;
@@ -91,7 +89,6 @@ import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.BiFunction;
 import io.reactivex.schedulers.Schedulers;
-import ru.ivanarh.jndcrash.NDCrash;
 
 public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnServiceBuilderProvider {
     // Android IPC messages
@@ -140,6 +137,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
     static final String DATA_TRANSFER_STATS_SLOW_BUCKETS_LAST_START_TIME = "dataTransferStatsSlowBucketsLastStartTime";
     static final String DATA_TRANSFER_STATS_FAST_BUCKETS = "dataTransferStatsFastBuckets";
     static final String DATA_TRANSFER_STATS_FAST_BUCKETS_LAST_START_TIME = "dataTransferStatsFastBucketsLastStartTime";
+    public static final String DATA_TRANSFER_STATS_CURRENT_DOWNLOAD_SPEED = "dataTransferStatsCurrentDownloadSpeed";
+    public static final String DATA_TRANSFER_STATS_CURRENT_UPLOAD_SPEED = "dataTransferStatsCurrentUploadSpeed";
     public static final String DATA_UNSAFE_TRAFFIC_SUBJECTS_LIST = "dataUnsafeTrafficSubjects";
     public static final String DATA_UNSAFE_TRAFFIC_ACTION_URLS_LIST = "dataUnsafeTrafficActionUrls";
     public static final String DATA_NFC_CONNECTION_INFO_EXCHANGE = "dataNfcConnectionInfoExchange";
@@ -156,30 +155,42 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         String protocolSelection = "auto"; // "auto", "conduit", "cdn_fronting", or "direct"
         String cdnFrontingCustomIpList = "";
         String cdnFrontingCustomSni = "";
+        boolean cdnFrontingUseBuiltInScan = true;
         boolean beastMode = true; // aggressive establishment: try all protocols on all servers
-        String conduitMode = "auto"; // "auto", "shirokhorshid", or "public"
+        String conduitMode = "auto"; // "auto", "azaditunnel", or "public"
         int conduitTimeoutSeconds = 180; // fallback timeout for auto conduit mode
         boolean rejectCensoredCountryProxies = true; // block conduits in censored countries
         boolean conduitFallbackToPublic = false; // true when auto mode has fallen back
         String sponsorId = EmbeddedValues.SPONSOR_ID;
-        String deviceLocation = "";
         boolean shareProxyOnNetwork = false;
         int shareProxyOnNetworkSocksPort = 0;
         int shareProxyOnNetworkHttpPort = 0;
         String shareProxyOnNetworkUsername = "";
         String shareProxyOnNetworkPassword = "";
+        boolean proxyOnlyMode = false;
+        boolean bypassIranIPsEnabled = false;
+        String bypassCustomRoutes = "";
+        String bypassDomains = "";
+        boolean bypassStrictModeEnabled = false;
+        String secureDNSMode = "doh";
+        String secureDNSProvider = "google";
+        String customDoTHost = "";
     }
 
     private Config m_tunnelConfig;
 
     // Conduit fallback state: when in "auto" conduit mode, tracks whether we've
-    // fallen back from shirokhorshid to public conduits
+    // fallen back from azaditunnel to public conduits
     private volatile boolean m_conduitFallbackToPublic = false;
     private Runnable m_conduitFallbackRunnable = null;
 
     private void setTunnelConfig(Config config) {
         m_tunnelConfig = config;
-        m_tunnelState.shareProxyOnNetwork = config.shareProxyOnNetwork;
+        m_tunnelState.shareProxyOnNetwork = shouldExposeLanProxy(config);
+    }
+
+    private static boolean shouldExposeLanProxy(Config config) {
+        return config != null && (config.shareProxyOnNetwork || config.proxyOnlyMode);
     }
 
     // Shared tunnel state, sent to the client in the HANDSHAKE
@@ -292,6 +303,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         m_tunnelState.isRunning = true;
         // This service runs as a separate process, so it needs to initialize embedded values
         EmbeddedValues.initialize(getContext());
+        com.psiphon3.azadi.BundledServerEntries.ensureLoaded(getContext());
 
         // Load trusted signatures from storage
         PackageHelper.configureRuntimeTrustedSignatures(
@@ -326,9 +338,14 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                     getTunnelConfigSingle()
                             .doOnSuccess(config -> {
                                 setTunnelConfig(config);
-                                if (config.shareProxyOnNetwork) {
+                                if (shouldExposeLanProxy(config)) {
                                     MyLog.i(R.string.log_lan_sharing_enabled,
                                             MyLog.Sensitivity.NOT_SENSITIVE);
+                                    if (config.proxyOnlyMode) {
+                                        com.psiphon3.azadi.AzadiEventLogger.logSync("PROXY_ONLY_MODE_ENABLED", null);
+                                    } else if (config.shareProxyOnNetwork) {
+                                        com.psiphon3.azadi.AzadiEventLogger.logSync("LAN_PROXY_ENABLED", null);
+                                    }
                                 }
                                 m_tunnelThread = new Thread(this::runTunnel);
                                 m_tunnelThread.start();
@@ -360,24 +377,30 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                     // The tunnel is connected but we are not routing traffic through the tunnel yet,
                     // check we need to send a landing page intent.
                     if (networkConnectionState == TunnelState.ConnectionData.NetworkConnectionState.CONNECTED && !isRoutingThroughTunnel) {
-                        if (m_tunnelState.homePages != null && m_tunnelState.homePages.size() != 0) {
+                        if (m_tunnelConfig != null && m_tunnelConfig.proxyOnlyMode) {
+                            updateLanProxyRuntime(true);
+                            m_isRoutingThroughTunnelPublishRelay.accept(Boolean.TRUE);
+                            return Observable.just(networkConnectionState);
+                        }
+                        boolean autoOpenHomepage = new AppPreferences(getContext()).getBoolean(
+                                getContext().getString(R.string.autoOpenHomepagePreference), false);
+                        if (autoOpenHomepage
+                                && m_tunnelState.homePages != null
+                                && m_tunnelState.homePages.size() != 0) {
                             if (canSendIntentToActivity()) {
                                 m_vpnManager.routeThroughTunnel(m_tunnel.getLocalSocksProxyPort());
                                 sendHandshakeIntent();
                                 m_isRoutingThroughTunnelPublishRelay.accept(Boolean.TRUE);
-                                // Do not emit downstream if we are just started routing.
-                                return Observable.empty();
+                                return Observable.just(networkConnectionState);
                             }
                             // Emit CONNECTING and start waiting for an activity to bind
                             return waitSendIntentAndRouteThroughTunnelCompletable(this::sendHandshakeIntent)
                                     .<TunnelState.ConnectionData.NetworkConnectionState>toObservable()
                                     .startWith(TunnelState.ConnectionData.NetworkConnectionState.CONNECTING);
                         }
-                        // No intents to send, just route through tunnel.
                         m_vpnManager.routeThroughTunnel(m_tunnel.getLocalSocksProxyPort());
                         m_isRoutingThroughTunnelPublishRelay.accept(Boolean.TRUE);
-                        // Do not emit downstream if we are just started routing.
-                        return Observable.empty();
+                        return Observable.just(networkConnectionState);
                     }
                     return Observable.just(networkConnectionState);
                 })
@@ -564,7 +587,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
     private Single<Config> getTunnelConfigSingle() {
         final AppPreferences multiProcessPreferences = new AppPreferences(getContext());
 
-        Single<Config> configSingle = Single.fromCallable(() -> {
+        return Single.fromCallable(() -> {
             Config tunnelConfig = new Config();
             tunnelConfig.egressRegion = multiProcessPreferences
                     .getString(getContext().getString(R.string.egressRegionPreference),
@@ -581,6 +604,9 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             tunnelConfig.cdnFrontingCustomSni = multiProcessPreferences
                     .getString(getContext().getString(R.string.cdnFrontingCustomSniPreference),
                             "");
+            tunnelConfig.cdnFrontingUseBuiltInScan = multiProcessPreferences
+                    .getBoolean(getContext().getString(R.string.cdnFrontingUseBuiltInScanPreference),
+                            true);
             tunnelConfig.beastMode = multiProcessPreferences
                     .getBoolean(getContext().getString(R.string.beastModePreference),
                             true);
@@ -617,24 +643,24 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                     multiProcessPreferences.getString(
                             getContext().getString(R.string.shareProxyOnNetworkPasswordPreference),
                             ""));
+            tunnelConfig.proxyOnlyMode = multiProcessPreferences
+                    .getBoolean(getContext().getString(R.string.proxyOnlyModePreference), false);
+            tunnelConfig.bypassIranIPsEnabled = multiProcessPreferences
+                    .getBoolean(getContext().getString(R.string.bypassIranIPsPreference), false);
+            tunnelConfig.bypassCustomRoutes = multiProcessPreferences
+                    .getString(getContext().getString(R.string.bypassCustomRoutesPreference), "");
+            tunnelConfig.bypassDomains = multiProcessPreferences
+                    .getString(getContext().getString(R.string.bypassDomainsPreference), "");
+            tunnelConfig.bypassStrictModeEnabled = multiProcessPreferences
+                    .getBoolean(getContext().getString(R.string.bypassStrictModePreference), false);
+            tunnelConfig.secureDNSMode = multiProcessPreferences
+                    .getString(getContext().getString(R.string.secureDNSModePreference), "doh");
+            tunnelConfig.secureDNSProvider = multiProcessPreferences
+                    .getString(getContext().getString(R.string.secureDNSProviderPreference), "google");
+            tunnelConfig.customDoTHost = multiProcessPreferences
+                    .getString(getContext().getString(R.string.customDoTHostPreference), "");
             return tunnelConfig;
         });
-
-        int deviceLocationPrecision = multiProcessPreferences
-                .getInt(getContext().getString(R.string.deviceLocationPrecisionParameter),
-                        0);
-
-        Single<String> geoHashSingle =
-                Location.getGeoHashSingle(getContext(), deviceLocationPrecision, 1000)
-                        .onErrorReturnItem("");
-
-        BiFunction<Config, String, Config> zipper =
-                (config, deviceLocation) -> {
-                    config.deviceLocation = deviceLocation;
-                    return config;
-                };
-
-        return Single.zip(configSingle, geoHashSingle, zipper);
     }
 
     private Notification createNotification(
@@ -744,6 +770,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         // In stealth mode, hide the Stop action button (it would look suspicious
         // on a "Calculator" or "Weather" notification)
         if (stealthIcon == 0) {
+            notificationBuilder.setLargeIcon(
+                    BitmapFactory.decodeResource(getContext().getResources(), R.drawable.ic_app_logo));
             notificationBuilder.addAction(notificationAction);
         }
 
@@ -1015,13 +1043,26 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
     private Bundle getDataTransferStatsBundle() {
         Bundle data = new Bundle();
-        data.putLong(DATA_TRANSFER_STATS_CONNECTED_TIME, DataTransferStats.getDataTransferStatsForService().m_connectedTime);
-        data.putLong(DATA_TRANSFER_STATS_TOTAL_BYTES_SENT, DataTransferStats.getDataTransferStatsForService().m_totalBytesSent);
-        data.putLong(DATA_TRANSFER_STATS_TOTAL_BYTES_RECEIVED, DataTransferStats.getDataTransferStatsForService().m_totalBytesReceived);
-        data.putParcelableArrayList(DATA_TRANSFER_STATS_SLOW_BUCKETS, DataTransferStats.getDataTransferStatsForService().m_slowBuckets);
-        data.putLong(DATA_TRANSFER_STATS_SLOW_BUCKETS_LAST_START_TIME, DataTransferStats.getDataTransferStatsForService().m_slowBucketsLastStartTime);
-        data.putParcelableArrayList(DATA_TRANSFER_STATS_FAST_BUCKETS, DataTransferStats.getDataTransferStatsForService().m_fastBuckets);
-        data.putLong(DATA_TRANSFER_STATS_FAST_BUCKETS_LAST_START_TIME, DataTransferStats.getDataTransferStatsForService().m_fastBucketsLastStartTime);
+        DataTransferStats.DataTransferStatsForService stats = DataTransferStats.getDataTransferStatsForService();
+        data.putLong(DATA_TRANSFER_STATS_CONNECTED_TIME, stats.m_connectedTime);
+        data.putLong(DATA_TRANSFER_STATS_TOTAL_BYTES_SENT, stats.m_totalBytesSent);
+        data.putLong(DATA_TRANSFER_STATS_TOTAL_BYTES_RECEIVED, stats.m_totalBytesReceived);
+        data.putParcelableArrayList(DATA_TRANSFER_STATS_SLOW_BUCKETS, stats.m_slowBuckets);
+        data.putLong(DATA_TRANSFER_STATS_SLOW_BUCKETS_LAST_START_TIME, stats.m_slowBucketsLastStartTime);
+        data.putParcelableArrayList(DATA_TRANSFER_STATS_FAST_BUCKETS, stats.m_fastBuckets);
+        data.putLong(DATA_TRANSFER_STATS_FAST_BUCKETS_LAST_START_TIME, stats.m_fastBucketsLastStartTime);
+
+        // Explicitly extract the last second's speed to avoid bucket-shifting lag in the UI process
+        long downloadSpeed = 0;
+        long uploadSpeed = 0;
+        if (stats.m_fastBuckets != null && !stats.m_fastBuckets.isEmpty()) {
+            DataTransferStats.DataTransferStatsBase.Bucket latest = stats.m_fastBuckets.get(stats.m_fastBuckets.size() - 1);
+            downloadSpeed = latest.m_bytesReceived;
+            uploadSpeed = latest.m_bytesSent;
+        }
+        data.putLong(DATA_TRANSFER_STATS_CURRENT_DOWNLOAD_SPEED, downloadSpeed);
+        data.putLong(DATA_TRANSFER_STATS_CURRENT_UPLOAD_SPEED, uploadSpeed);
+
         return data;
     }
 
@@ -1032,9 +1073,13 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         StringBuilder list = new StringBuilder();
 
         for (String encodedServerEntry : EmbeddedValues.EMBEDDED_SERVER_LIST) {
-            list.append(encodedServerEntry);
-            list.append("\n");
+            if (!TextUtils.isEmpty(encodedServerEntry)) {
+                list.append(encodedServerEntry);
+                list.append("\n");
+            }
         }
+
+        list.append(com.psiphon3.azadi.BundledServerEntries.getServerEntriesText(context));
 
         // Delete legacy server entries if they exist
         context.deleteFile(LEGACY_SERVER_ENTRY_FILENAME);
@@ -1109,9 +1154,9 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
     };
 
     private static final String[] CDN_FRONTING_TUNNEL_PROTOCOLS = {
-            "FRONTED-MEEK-CDN-OSSH",
-            "FRONTED-MEEK-CDN-HTTP-OSSH",
-            "FRONTED-MEEK-CDN-QUIC-OSSH",
+            "FRONTED-MEEK-OSSH",
+            "FRONTED-MEEK-HTTP-OSSH",
+            "FRONTED-MEEK-QUIC-OSSH",
     };
 
     private static final String[] DIRECT_TUNNEL_PROTOCOLS = {
@@ -1124,11 +1169,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             "QUIC-OSSH",
             "SHADOWSOCKS-OSSH",
             "FRONTED-MEEK-OSSH",
-            "FRONTED-MEEK-CDN-OSSH",
             "FRONTED-MEEK-HTTP-OSSH",
-            "FRONTED-MEEK-CDN-HTTP-OSSH",
             "FRONTED-MEEK-QUIC-OSSH",
-            "FRONTED-MEEK-CDN-QUIC-OSSH",
     };
 
     private Handler sendDataTransferStatsHandler = new Handler();
@@ -1146,11 +1188,9 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         // Also set locale
         setLocale(this);
 
-        final String stdErrRedirectPath = PsiphonCrashService.getStdRedirectPath(m_parentService);
-        NDCrash.nativeInitializeStdErrRedirect(stdErrRedirectPath);
-
         m_isStopping.set(false);
         m_conduitFallbackToPublic = false; // Reset fallback state for fresh tunnel start
+        com.psiphon3.azadi.TunnelStatisticsStore.init(getContext());
         m_networkConnectionStatePublishRelay.accept(TunnelState.ConnectionData.NetworkConnectionState.CONNECTING);
         m_isRoutingThroughTunnelPublishRelay.accept(Boolean.FALSE);
 
@@ -1165,11 +1205,26 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         sendDataTransferStatsHandler.postDelayed(sendDataTransferStats, sendDataTransferStatsIntervalMs);
 
         try {
-            m_vpnManager.setShareProxyOnNetwork(m_tunnelConfig.shareProxyOnNetwork);
-            m_vpnManager.vpnEstablish();
+            if (m_tunnelConfig.proxyOnlyMode) {
+                String wifiIp = com.psiphon3.azadi.LocalNetworkAddress.wifiIpv4(getContext());
+                if (wifiIp == null) {
+                    com.psiphon3.azadi.AzadiEventLogger.logSync("PROXY_ONLY_BLOCKED_NO_WIFI", null);
+                    throw new IllegalStateException("Proxy Only requires Wi-Fi");
+                }
+                com.psiphon3.azadi.AzadiEventLogger.logSync("LAN_PROXY_WIFI_IP_DETECTED", "ip=" + wifiIp);
+            }
+
+            m_vpnManager.setProxyOnlyMode(m_tunnelConfig.proxyOnlyMode);
+            m_vpnManager.setShareProxyOnNetwork(m_tunnelConfig.shareProxyOnNetwork && !m_tunnelConfig.proxyOnlyMode);
+            if (!m_tunnelConfig.proxyOnlyMode) {
+                configureVpnBypassAndDns(m_tunnelConfig);
+                m_vpnManager.vpnEstablish();
+            } else {
+                m_vpnManager.vpnEstablish();
+            }
             MyLog.i(R.string.vpn_service_running, MyLog.Sensitivity.NOT_SENSITIVE);
 
-            m_tunnel.setVpnMode(true);
+            m_tunnel.setVpnMode(!m_tunnelConfig.proxyOnlyMode);
             m_tunnel.startTunneling(getServerEntries(m_parentService));
 
             // Start conduit fallback timer immediately after tunneling begins.
@@ -1194,6 +1249,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                  PsiphonTunnel.Exception e) {
             String errorMessage = e.getMessage();
             MyLog.e(R.string.start_tunnel_failed, MyLog.Sensitivity.NOT_SENSITIVE, errorMessage);
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "PSIPHON_TUNNEL_START_FAILED", errorMessage != null ? errorMessage : e.getClass().getSimpleName());
             if ((errorMessage.startsWith("get package uid:") || errorMessage.startsWith("getPackageUid:"))
                     && errorMessage.endsWith("android.permission.INTERACT_ACROSS_USERS.")) {
                 MyLog.i(R.string.vpn_exclusions_conflict, MyLog.Sensitivity.NOT_SENSITIVE);
@@ -1203,6 +1260,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
             m_isStopping.set(true);
             cancelConduitFallbackTimer();
+            com.psiphon3.azadi.TunnelStatisticsStore.markDisconnected(getContext());
+            com.psiphon3.azadi.LanProxyRuntimeStore.onVpnDisconnected();
             m_networkConnectionStatePublishRelay.accept(TunnelState.ConnectionData.NetworkConnectionState.CONNECTING);
             m_isRoutingThroughTunnelPublishRelay.accept(false);
             m_vpnManager.vpnTeardown();
@@ -1775,7 +1834,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         json.put("FrontedMeekDialOverrides", makeCdnFrontingDialOverrides(
                 tunnelConfig.cdnFrontingCustomSni));
         json.put("FrontedMeekDialOverridesProbability", 1.0);
-        json.put("FrontedMeekCDNScanUseBuiltInSpec", true);
+        json.put("FrontedMeekCDNScanUseBuiltInSpec", tunnelConfig.cdnFrontingUseBuiltInScan);
 
         JSONObject scanSpec = makeCdnFrontingScanSpec(
                 tunnelConfig.cdnFrontingCustomIpList,
@@ -1793,6 +1852,21 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         return array;
     }
 
+    /** Parses a JSON array string; blank values become an empty array (never throws). */
+    private static JSONArray parseJsonArrayOrEmpty(String fieldName, String json) {
+        if (TextUtils.isEmpty(json) || json.trim().isEmpty()) {
+            return new JSONArray();
+        }
+        try {
+            return new JSONArray(json);
+        } catch (JSONException e) {
+            MyLog.e("Invalid embedded JSON array", "field", fieldName, "error", e.getMessage());
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "PSIPHON_CONFIG_JSON_DECODE_FAILED", "field=" + fieldName);
+            return new JSONArray();
+        }
+    }
+
     public static String buildTunnelCoreConfig(
             Context context,
             Config tunnelConfig,
@@ -1807,12 +1881,13 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             json.put("ClientVersion", EmbeddedValues.CLIENT_VERSION);
 
             if (UpgradeChecker.upgradeCheckNeeded(context)) {
-
-                json.put("UpgradeDownloadURLs", new JSONArray(EmbeddedValues.UPGRADE_URLS_JSON));
-
-                json.put("UpgradeDownloadClientVersionHeader", "x-amz-meta-psiphon-client-version");
-
-                json.put("EnableUpgradeDownload", true);
+                JSONArray upgradeDownloadURLs =
+                        parseJsonArrayOrEmpty("UPGRADE_URLS_JSON", EmbeddedValues.UPGRADE_URLS_JSON);
+                if (upgradeDownloadURLs.length() > 0) {
+                    json.put("UpgradeDownloadURLs", upgradeDownloadURLs);
+                    json.put("UpgradeDownloadClientVersionHeader", "x-amz-meta-psiphon-client-version");
+                    json.put("EnableUpgradeDownload", true);
+                }
             }
 
             json.put("MigrateUpgradeDownloadFilename",
@@ -1822,9 +1897,18 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
             json.put("SponsorId", tunnelConfig.sponsorId);
 
-            json.put("RemoteServerListURLs", new JSONArray(EmbeddedValues.REMOTE_SERVER_LIST_URLS_JSON));
+            JSONArray remoteServerListURLs = parseJsonArrayOrEmpty(
+                    "REMOTE_SERVER_LIST_URLS_JSON", EmbeddedValues.REMOTE_SERVER_LIST_URLS_JSON);
+            if (remoteServerListURLs.length() > 0) {
+                json.put("RemoteServerListURLs", remoteServerListURLs);
+            }
 
-            json.put("ObfuscatedServerListRootURLs", new JSONArray(EmbeddedValues.OBFUSCATED_SERVER_LIST_ROOT_URLS_JSON));
+            JSONArray obfuscatedServerListRootURLs = parseJsonArrayOrEmpty(
+                    "OBFUSCATED_SERVER_LIST_ROOT_URLS_JSON",
+                    EmbeddedValues.OBFUSCATED_SERVER_LIST_ROOT_URLS_JSON);
+            if (obfuscatedServerListRootURLs.length() > 0) {
+                json.put("ObfuscatedServerListRootURLs", obfuscatedServerListRootURLs);
+            }
 
             json.put("RemoteServerListSignaturePublicKey", EmbeddedValues.REMOTE_SERVER_LIST_SIGNATURE_PUBLIC_KEY);
 
@@ -1842,11 +1926,13 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
             json.put("EmitDiagnosticNotices", true);
 
-            json.put("EmitDiagnosticNetworkParameters", true);
+            // EnableFeedbackUpload must be false, and FeedbackUploadURLs must be omitted
+            // to pass core validation.
+            json.put("EnableFeedbackUpload", false);
 
-            json.put("FeedbackUploadURLs", new JSONArray(EmbeddedValues.FEEDBACK_DIAGNOSTIC_INFO_UPLOAD_URLS_JSON));
-            json.put("FeedbackEncryptionPublicKey", EmbeddedValues.FEEDBACK_ENCRYPTION_PUBLIC_KEY);
-            json.put("EnableFeedbackUpload", true);
+            if (!TextUtils.isEmpty(EmbeddedValues.FEEDBACK_ENCRYPTION_PUBLIC_KEY)) {
+                json.put("FeedbackEncryptionPublicKey", EmbeddedValues.FEEDBACK_ENCRYPTION_PUBLIC_KEY);
+            }
 
             json.put("AdditionalParameters", EmbeddedValues.ADDITIONAL_PARAMETERS);
 
@@ -1914,11 +2000,11 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                 // Determine whether to use personal compartment ID based on conduit mode
                 String conduitMode = tunnelConfig.conduitMode;
                 boolean useCompartmentId = false;
-                if ("shirokhorshid".equals(conduitMode)) {
-                    // Only shirokhorshid conduits, always use compartment ID
+                if ("azaditunnel".equals(conduitMode)) {
+                    // Only azaditunnel conduits, always use compartment ID
                     useCompartmentId = true;
                     MyLog.i(R.string.conduit_mode_status, MyLog.Sensitivity.NOT_SENSITIVE,
-                            context.getString(R.string.conduit_mode_shirokhorshid));
+                            context.getString(R.string.conduit_mode_azaditunnel));
                 } else if ("public".equals(conduitMode)) {
                     // Public conduits only, never use compartment ID
                     useCompartmentId = false;
@@ -1984,14 +2070,6 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
             JSONArray clientFeaturesJsonArray = new JSONArray();
 
-            AppPreferences mp = new AppPreferences(context);
-            int deviceLocationPrecision = mp.getInt(context.getString(R.string.deviceLocationPrecisionParameter), 0);
-            if (deviceLocationPrecision > 0) {
-                if (ContextCompat.checkSelfPermission(context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION) == PermissionChecker.PERMISSION_GRANTED) {
-                    clientFeaturesJsonArray.put("coarse-location");
-                }
-            }
             if (Utils.getUnsafeTrafficAlertsOptInState(context)) {
                 clientFeaturesJsonArray.put("unsafe-traffic-alerts");
             }
@@ -1999,23 +2077,24 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                 json.put("ClientFeatures", clientFeaturesJsonArray);
             }
 
-            json.put("DNSResolverAlternateServers", new JSONArray("[\"1.1.1.1\", \"1.0.0.1\", \"8.8.8.8\", \"8.8.4.4\"]"));
+            JSONArray dnsServers = buildDnsServers(tunnelConfig);
+            json.put("DNSResolverAlternateServers", dnsServers);
 
-            if (!TextUtils.isEmpty(tunnelConfig.deviceLocation)) {
-                json.put("DeviceLocation", tunnelConfig.deviceLocation);
+            if (tunnelConfig.proxyOnlyMode) {
+                json.put("TunnelWholeDevice", 0);
+                com.psiphon3.azadi.AzadiEventLogger.logSync("PROXY_ONLY_MODE_ENABLED", null);
             }
 
             json.put("EmitBytesTransferred", true);
 
-            // When LAN sharing is enabled, bind proxy listeners to all interfaces
-            if (tunnelConfig.shareProxyOnNetwork) {
+            if (shouldExposeLanProxy(tunnelConfig)) {
                 json.put("ListenInterface", "any");
-                if (tunnelConfig.shareProxyOnNetworkSocksPort > 0) {
-                    json.put("LocalSocksProxyPort", tunnelConfig.shareProxyOnNetworkSocksPort);
-                }
-                if (tunnelConfig.shareProxyOnNetworkHttpPort > 0) {
-                    json.put("LocalHttpProxyPort", tunnelConfig.shareProxyOnNetworkHttpPort);
-                }
+                int socksPort = tunnelConfig.shareProxyOnNetworkSocksPort > 0
+                        ? tunnelConfig.shareProxyOnNetworkSocksPort : 1088;
+                int httpPort = tunnelConfig.shareProxyOnNetworkHttpPort > 0
+                        ? tunnelConfig.shareProxyOnNetworkHttpPort : 8087;
+                json.put("LocalSocksProxyPort", socksPort);
+                json.put("LocalHttpProxyPort", httpPort);
                 if (!TextUtils.isEmpty(tunnelConfig.shareProxyOnNetworkUsername) &&
                         !TextUtils.isEmpty(tunnelConfig.shareProxyOnNetworkPassword)) {
                     json.put("LocalProxyUsername", tunnelConfig.shareProxyOnNetworkUsername);
@@ -2023,8 +2102,45 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                 }
             }
 
-            return json.toString();
+            String config = json.toString();
+            int remoteUrlCount = remoteServerListURLs.length();
+            int bundledEntryCount = com.psiphon3.azadi.BundledServerEntries.lineCount(context);
+            int embeddedGradleCount = 0;
+            for (String entry : EmbeddedValues.EMBEDDED_SERVER_LIST) {
+                if (!TextUtils.isEmpty(entry)) {
+                    embeddedGradleCount++;
+                }
+            }
+
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "PSIPHON_REMOTE_SERVER_LIST_ENABLED", "urls=" + remoteUrlCount);
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "PSIPHON_CONFIG_NOT_EMPTY", "bytes=" + config.length());
+
+            if (TextUtils.isEmpty(config.trim())) {
+                MyLog.e("buildTunnelCoreConfig failed", "error", "config string is empty");
+                return null;
+            }
+            if (TextUtils.isEmpty(EmbeddedValues.PROPAGATION_CHANNEL_ID)
+                    || TextUtils.isEmpty(tunnelConfig.sponsorId)) {
+                MyLog.e("buildTunnelCoreConfig failed", "error",
+                        "missing PropagationChannelId or SponsorId");
+                return null;
+            }
+            if (remoteUrlCount == 0 && bundledEntryCount == 0 && embeddedGradleCount == 0) {
+                MyLog.e("buildTunnelCoreConfig failed", "error",
+                        "no embedded server entries and no remote server list URLs");
+                com.psiphon3.azadi.AzadiEventLogger.logSync("PSIPHON_CONFIG_VALIDATION_FAILED",
+                        "no embedded entries or remote URLs");
+                return null;
+            }
+
+            MyLog.i("TunnelCoreConfig bytes", "size", config.length());
+            return config;
         } catch (JSONException e) {
+            MyLog.e("buildTunnelCoreConfig failed", "error", e.getMessage());
+            com.psiphon3.azadi.AzadiEventLogger.logSync("PSIPHON_CONFIG_VALIDATION_FAILED",
+                    "json=" + e.getMessage());
             return null;
         }
     }
@@ -2087,7 +2203,11 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         // Sync instance fallback state into config for the static buildTunnelCoreConfig
         m_tunnelConfig.conduitFallbackToPublic = m_conduitFallbackToPublic;
         String config = buildTunnelCoreConfig(getContext(), m_tunnelConfig, true, null);
-        return config == null ? "" : config;
+        if (config == null || config.trim().isEmpty()) {
+            throw new IllegalStateException(
+                    "Psiphon config is empty — check embedded server entries and remote list URLs");
+        }
+        return config;
     }
 
     @Override
@@ -2097,45 +2217,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         m_Handler.post(new Runnable() {
             @Override
             public void run() {
-                // Check for Conduit proxy messages and display in UI
-                
-                // Pattern for "trying Conduit relay (country: XX)"
-                if (message.contains("trying Conduit relay (country:")) {
-                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\(country: ([A-Z]{2})\\)");
-                    java.util.regex.Matcher matcher = pattern.matcher(message);
-                    if (matcher.find()) {
-                        String countryCode = matcher.group(1);
-                        MyLog.i(R.string.conduit_proxy_trying, MyLog.Sensitivity.NOT_SENSITIVE, countryCode);
-                    }
-                }
-                // Pattern for "tunnel connected via Conduit relay (protocol: XXX, country: XX)"
-                else if (message.contains("tunnel connected via Conduit relay (protocol:") && message.contains("country:")) {
-                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\(protocol: ([^,]+), country: ([A-Z]{2})\\)");
-                    java.util.regex.Matcher matcher = pattern.matcher(message);
-                    if (matcher.find()) {
-                        String protocol = matcher.group(1);
-                        String countryCode = matcher.group(2);
-                        MyLog.i(R.string.conduit_proxy_connected, MyLog.Sensitivity.NOT_SENSITIVE, protocol, countryCode);
-                    }
-                }
-                // Pattern for "tunnel connected via Conduit relay (protocol: XXX)" - no country (replay)
-                else if (message.contains("tunnel connected via Conduit relay (protocol:")) {
-                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\(protocol: ([^)]+)\\)");
-                    java.util.regex.Matcher matcher = pattern.matcher(message);
-                    if (matcher.find()) {
-                        String protocol = matcher.group(1);
-                        MyLog.i(R.string.conduit_proxy_connected_no_country, MyLog.Sensitivity.NOT_SENSITIVE, protocol);
-                    }
-                }
-                // Pattern for "tunnel connected (protocol: XXX)" - non-Conduit
-                else if (message.contains("tunnel connected (protocol:")) {
-                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\(protocol: ([^)]+)\\)");
-                    java.util.regex.Matcher matcher = pattern.matcher(message);
-                    if (matcher.find()) {
-                        String protocol = matcher.group(1);
-                        MyLog.i(R.string.tunnel_connected_protocol, MyLog.Sensitivity.NOT_SENSITIVE, protocol);
-                    }
-                }
+                com.psiphon3.azadi.TunnelStatisticsStore.onDiagnosticMessage(getContext(), message);
 
                 // Beast mode notices
                 if (message.contains("beast mode active (workers:")) {
@@ -2206,22 +2288,13 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                     return;
                 }
 
-                // Inproxy connection diagnostic messages
-                // These show the phase-by-phase progress of each relay attempt.
-                // Note: PsiphonTunnel.java dispatches diagnostic notices via two
-                // code paths (PsiphonProviderNoticeHandler and handleNotice),
-                // causing duplicate onDiagnosticMessage calls. We deduplicate
-                // by tracking the last displayed message.
+                // Inproxy connection diagnostic messages — parsed in TunnelStatisticsStore.
                 if (message.contains("inproxy-dial:")) {
                     String diagMsg = parseInproxyDiagnostic(message);
-                    if (diagMsg != null) {
-                        // Deduplicate: suppress if identical to last message
-                        if (!diagMsg.equals(m_lastInproxyDiagMsg)) {
-                            m_lastInproxyDiagMsg = diagMsg;
-                            MyLog.i(R.string.conduit_diag, MyLog.Sensitivity.NOT_SENSITIVE, diagMsg);
-                        }
+                    if (diagMsg != null && !diagMsg.equals(m_lastInproxyDiagMsg)) {
+                        m_lastInproxyDiagMsg = diagMsg;
+                        MyLog.i(R.string.conduit_diag, MyLog.Sensitivity.NOT_SENSITIVE, diagMsg);
                     }
-                    // Don't log the raw diagnostic JSON for inproxy-dial
                     return;
                 }
                 
@@ -2433,6 +2506,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             @Override
             public void run() {
                 MyLog.e(R.string.http_proxy_port_in_use, MyLog.Sensitivity.NOT_SENSITIVE, port);
+                com.psiphon3.azadi.LanProxyRuntimeStore.onPortInUse();
+                com.psiphon3.azadi.AzadiEventLogger.logSync("LAN_PROXY_HTTP_BIND_FAILED", "port=" + port);
                 signalStopService();
             }
         });
@@ -2445,6 +2520,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             public void run() {
                 MyLog.i(R.string.socks_running, MyLog.Sensitivity.NOT_SENSITIVE, port);
                 m_tunnelState.listeningLocalSocksProxyPort = port;
+                updateLanProxyRuntime(true);
             }
         });
     }
@@ -2456,6 +2532,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             public void run() {
                 MyLog.i(R.string.http_proxy_running, MyLog.Sensitivity.NOT_SENSITIVE, port);
                 m_tunnelState.listeningLocalHttpProxyPort = port;
+                updateLanProxyRuntime(true);
 
                 final AppPreferences multiProcessPreferences = new AppPreferences(getContext());
                 multiProcessPreferences.put(
@@ -2514,6 +2591,9 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         m_Handler.post(new Runnable() {
             @Override
             public void run() {
+                String protocol = m_tunnelConfig != null ? m_tunnelConfig.protocolSelection : null;
+                com.psiphon3.azadi.TunnelStatisticsStore.onConnecting(getContext(), protocol);
+
                 m_networkConnectionStatePublishRelay.accept(TunnelState.ConnectionData.NetworkConnectionState.CONNECTING);
                 DataTransferStats.getDataTransferStatsForService().stop();
                 m_tunnelState.homePages.clear();
@@ -2543,6 +2623,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                 DataTransferStats.getDataTransferStatsForService().startConnected();
 
                 MyLog.i(R.string.tunnel_connected, MyLog.Sensitivity.NOT_SENSITIVE);
+                com.psiphon3.azadi.AzadiEventLogger.logSync("PSIPHON_CORE_CONNECTED", null);
 
                 m_networkConnectionStatePublishRelay.accept(TunnelState.ConnectionData.NetworkConnectionState.CONNECTED);
             }
@@ -2576,6 +2657,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                 m_conduitFallbackToPublic = true;
                 MyLog.i(R.string.conduit_fallback_timeout, MyLog.Sensitivity.NOT_SENSITIVE, timeoutLabel);
                 MyLog.i(R.string.conduit_fallback_trying_public, MyLog.Sensitivity.NOT_SENSITIVE);
+                com.psiphon3.azadi.TunnelStatisticsStore.onConduitPublicFallback(getContext());
 
                 // Restart tunnel — getConfig will now omit the compartment ID
                 try {
@@ -2692,6 +2774,9 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         m_Handler.post(new Runnable() {
             @Override
             public void run() {
+                if (sent > 0 || received > 0) {
+                    MyLog.i("BytesTransferred: sent=" + sent + ", received=" + received);
+                }
                 DataTransferStats.DataTransferStatsForService stats = DataTransferStats.getDataTransferStatsForService();
                 stats.addBytesSent(sent);
                 stats.addBytesReceived(received);
@@ -2776,24 +2861,8 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         JSONObject params = (JSONObject) o;
 
         // Process the application parameters
-        processDeviceLocationPrecision(params);
         processTrustedApps(params);
         processVpnRules(params);
-    }
-
-    private void processDeviceLocationPrecision(JSONObject params) {
-        // Parse the device location precision from the parameters json object
-        // The expected format is:
-        // {
-        //     "DeviceLocationPrecision": 0
-        // }
-        try {
-            int deviceLocationPrecision = params.optInt("DeviceLocationPrecision");
-            final AppPreferences mp = new AppPreferences(getContext());
-            mp.put(m_parentService.getString(R.string.deviceLocationPrecisionParameter), deviceLocationPrecision);
-        } catch (Exception e) {
-            MyLog.e("TunnelManager: failed to parse device location precision: " + e);
-        }
     }
 
     private void processTrustedApps(JSONObject params) {
@@ -2945,5 +3014,130 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
+    }
+
+    private void configureVpnBypassAndDns(Config tunnelConfig) {
+        if (tunnelConfig.proxyOnlyMode) {
+            m_vpnManager.setBypassExcludedRoutes(java.util.Collections.emptyList());
+            m_vpnManager.setSecureDnsServer(null);
+            return;
+        }
+
+        java.util.LinkedHashSet<String> routeKeys = new java.util.LinkedHashSet<>();
+        java.util.List<String[]> excludeRoutes = new java.util.ArrayList<>();
+        int iranCount = 0;
+        int customCount = 0;
+        int domainCount = 0;
+
+        if (tunnelConfig.bypassIranIPsEnabled) {
+            com.psiphon3.azadi.AzadiEventLogger.logSync("BYPASS_IRAN_ENABLED", null);
+            com.psiphon3.azadi.IranBypassListService.refresh(getContext(), false);
+            for (com.psiphon3.azadi.BypassRoute route :
+                    com.psiphon3.azadi.IranBypassListService.effectiveRoutes(getContext())) {
+                String key = route.getAddress() + "/" + route.getPrefix();
+                if (routeKeys.add(key)) {
+                    excludeRoutes.add(new String[]{route.getAddress(), String.valueOf(route.getPrefix())});
+                    iranCount++;
+                }
+            }
+        } else {
+            com.psiphon3.azadi.AzadiEventLogger.logSync("BYPASS_IRAN_DISABLED", null);
+        }
+
+        if (tunnelConfig.bypassCustomRoutes != null && !tunnelConfig.bypassCustomRoutes.isEmpty()) {
+            for (com.psiphon3.azadi.BypassRoute route :
+                    com.psiphon3.azadi.BypassRoutes.parseBlob(tunnelConfig.bypassCustomRoutes)) {
+                String key = route.getAddress() + "/" + route.getPrefix();
+                if (routeKeys.add(key)) {
+                    excludeRoutes.add(new String[]{route.getAddress(), String.valueOf(route.getPrefix())});
+                    customCount++;
+                }
+            }
+        }
+
+        if (tunnelConfig.bypassDomains != null && !tunnelConfig.bypassDomains.isEmpty()) {
+            com.psiphon3.azadi.BypassDomainResolver.resolveAndCache(getContext(), tunnelConfig.bypassDomains);
+            for (com.psiphon3.azadi.BypassRoute route :
+                    com.psiphon3.azadi.BypassDomainResolver.resolvedRoutes(getContext())) {
+                String key = route.getAddress() + "/" + route.getPrefix();
+                if (routeKeys.add(key)) {
+                    excludeRoutes.add(new String[]{route.getAddress(), String.valueOf(route.getPrefix())});
+                    domainCount++;
+                }
+            }
+        }
+
+        m_vpnManager.setBypassExcludedRoutes(excludeRoutes);
+
+        String dns = com.psiphon3.azadi.SecureDNSConfiguration.dnsServerFor(
+                tunnelConfig.secureDNSMode,
+                tunnelConfig.secureDNSProvider,
+                tunnelConfig.customDoTHost);
+        if (tunnelConfig.bypassStrictModeEnabled && !excludeRoutes.isEmpty()) {
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "BYPASS_PROXY_DISABLED_FOR_ROUTES", "reason=strict_mode_enabled");
+            m_vpnManager.setSecureDnsServer(null);
+        } else {
+            m_vpnManager.setSecureDnsServer(dns);
+        }
+
+        if (!excludeRoutes.isEmpty()) {
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "BYPASS_IRAN_ROUTES_APPLIED",
+                    "count=" + excludeRoutes.size()
+                            + " iran=" + iranCount
+                            + " custom=" + customCount
+                            + " domains=" + domainCount
+                            + " messaging_compat=false");
+        }
+    }
+
+    private void updateLanProxyRuntime(boolean connected) {
+        if (!connected || m_tunnelConfig == null || !shouldExposeLanProxy(m_tunnelConfig)) {
+            return;
+        }
+        String wifiIp = com.psiphon3.azadi.LocalNetworkAddress.wifiIpv4(getContext());
+        if (wifiIp == null) {
+            com.psiphon3.azadi.LanProxyRuntimeStore.onNoWifiIp();
+            return;
+        }
+        int httpPort = m_tunnelState.listeningLocalHttpProxyPort > 0
+                ? m_tunnelState.listeningLocalHttpProxyPort
+                : (m_tunnelConfig.shareProxyOnNetworkHttpPort > 0
+                ? m_tunnelConfig.shareProxyOnNetworkHttpPort : 8087);
+        int socksPort = m_tunnelState.listeningLocalSocksProxyPort > 0
+                ? m_tunnelState.listeningLocalSocksProxyPort
+                : (m_tunnelConfig.shareProxyOnNetworkSocksPort > 0
+                ? m_tunnelConfig.shareProxyOnNetworkSocksPort : 1088);
+        com.psiphon3.azadi.LanProxyRuntimeStore.onProxyBridgeStarted(
+                wifiIp, httpPort, socksPort, m_tunnelConfig.proxyOnlyMode);
+        if (m_tunnelConfig.proxyOnlyMode) {
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "PROXY_ONLY_HTTP_LISTENING", "host=" + wifiIp + " port=" + httpPort);
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "PROXY_ONLY_SOCKS_LISTENING", "host=" + wifiIp + " port=" + socksPort);
+        } else {
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "LAN_PROXY_HTTP_LISTENING", "host=" + wifiIp + " port=" + httpPort);
+            com.psiphon3.azadi.AzadiEventLogger.logSync(
+                    "LAN_PROXY_SOCKS_LISTENING", "host=" + wifiIp + " port=" + socksPort);
+        }
+    }
+
+    private static JSONArray buildDnsServers(Config tunnelConfig) throws JSONException {
+        if (tunnelConfig.secureDNSMode != null && !"off".equals(tunnelConfig.secureDNSMode)) {
+            java.util.List<String> servers = com.psiphon3.azadi.SecureDNSConfiguration.alternateDnsServersFor(
+                    tunnelConfig.secureDNSMode,
+                    tunnelConfig.secureDNSProvider,
+                    tunnelConfig.customDoTHost);
+            if (!servers.isEmpty()) {
+                JSONArray arr = new JSONArray();
+                for (String server : servers) {
+                    arr.put(server);
+                }
+                return arr;
+            }
+        }
+        return new JSONArray("[\"1.1.1.1\", \"1.0.0.1\", \"8.8.8.8\", \"8.8.4.4\"]");
     }
 }

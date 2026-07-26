@@ -11,35 +11,35 @@ android {
     defaultConfig {
         compileSdk 26
         minSdkVersion 14
-        targetSdkVersion 26
-        versionCode VERSION_CODE
-        versionName VERSION_NAME
 
         resValue "string", "tray__authority", "com.example.preferences"
     }
-
     buildTypes {
         debug {
-            // output coverage with ./gradlew clean build createDebugCoverageReport
-            testCoverageEnabled true
+            enableUnitTestCoverage true
+            enableAndroidTestCoverage true
         }
     }
+
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    lintOptions {
-        abortOnError false
-    }
-
-    adbOptions {
-        timeOutInMs 300000
-    }
 
     buildFeatures {
         buildConfig true
+    }
+    installation {
+        timeOutInMs 300000
+    }
+    lint {
+        abortOnError false
+        targetSdk 26
+    }
+    testOptions {
+        targetSdk 26
     }
 }
 

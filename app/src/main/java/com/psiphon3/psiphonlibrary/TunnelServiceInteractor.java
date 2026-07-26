@@ -64,7 +64,7 @@ public class TunnelServiceInteractor {
     private static final String SERVICE_STARTING_BROADCAST_INTENT = "SERVICE_STARTING_BROADCAST_INTENT";
     private final BroadcastReceiver broadcastReceiver;
     private Relay<TunnelState> tunnelStateRelay = BehaviorRelay.<TunnelState>create().toSerialized();
-    private Relay<Boolean> dataStatsRelay = PublishRelay.<Boolean>create().toSerialized();
+    private Relay<Long> dataStatsRelay = PublishRelay.<Long>create().toSerialized();
 
     private final Messenger incomingMessenger = new Messenger(new IncomingMessageHandler(this));
 
@@ -74,6 +74,9 @@ public class TunnelServiceInteractor {
     private Disposable serviceMessengerDisposable;
     private Disposable restartServiceDisposable;
     private NfcExportListener nfcExportListener;
+
+    public static long lastDownloadSpeedBytes = 0;
+    public static long lastUploadSpeedBytes = 0;
 
     public TunnelServiceInteractor(Context context, boolean registerAsActivity) {
         this.shouldRegisterAsActivity = registerAsActivity;
@@ -184,7 +187,7 @@ public class TunnelServiceInteractor {
                 .toFlowable(BackpressureStrategy.LATEST);
     }
 
-    public Flowable<Boolean> dataStatsFlowable() {
+    public Flowable<Long> dataStatsFlowable() {
         return dataStatsRelay
                 .toFlowable(BackpressureStrategy.LATEST);
     }
@@ -244,7 +247,7 @@ public class TunnelServiceInteractor {
         serviceBindingFactory = new Rx2ServiceBindingFactory(context, intent);
         serviceMessengerDisposable = serviceBindingFactory.getMessengerObservable()
                 .doOnComplete(() -> tunnelStateRelay.accept(TunnelState.stopped()))
-                .doOnComplete(() -> dataStatsRelay.accept(Boolean.FALSE))
+                .doOnComplete(() -> dataStatsRelay.accept(0L))
                 .subscribe();
         Bundle data = new Bundle();
         data.putBoolean(TunnelManager.IS_CLIENT_AN_ACTIVITY, shouldRegisterAsActivity);
@@ -307,13 +310,17 @@ public class TunnelServiceInteractor {
             return;
         }
         data.setClassLoader(DataTransferStats.DataTransferStatsBase.Bucket.class.getClassLoader());
-        DataTransferStats.getDataTransferStatsForUI().m_connectedTime = data.getLong(TunnelManager.DATA_TRANSFER_STATS_CONNECTED_TIME);
-        DataTransferStats.getDataTransferStatsForUI().m_totalBytesSent = data.getLong(TunnelManager.DATA_TRANSFER_STATS_TOTAL_BYTES_SENT);
-        DataTransferStats.getDataTransferStatsForUI().m_totalBytesReceived = data.getLong(TunnelManager.DATA_TRANSFER_STATS_TOTAL_BYTES_RECEIVED);
-        DataTransferStats.getDataTransferStatsForUI().m_slowBuckets = data.getParcelableArrayList(TunnelManager.DATA_TRANSFER_STATS_SLOW_BUCKETS);
-        DataTransferStats.getDataTransferStatsForUI().m_slowBucketsLastStartTime = data.getLong(TunnelManager.DATA_TRANSFER_STATS_SLOW_BUCKETS_LAST_START_TIME);
-        DataTransferStats.getDataTransferStatsForUI().m_fastBuckets = data.getParcelableArrayList(TunnelManager.DATA_TRANSFER_STATS_FAST_BUCKETS);
-        DataTransferStats.getDataTransferStatsForUI().m_fastBucketsLastStartTime = data.getLong(TunnelManager.DATA_TRANSFER_STATS_FAST_BUCKETS_LAST_START_TIME);
+        DataTransferStats.DataTransferStatsForUI uiStats = DataTransferStats.getDataTransferStatsForUI();
+        uiStats.m_connectedTime = data.getLong(TunnelManager.DATA_TRANSFER_STATS_CONNECTED_TIME);
+        uiStats.m_totalBytesSent = data.getLong(TunnelManager.DATA_TRANSFER_STATS_TOTAL_BYTES_SENT);
+        uiStats.m_totalBytesReceived = data.getLong(TunnelManager.DATA_TRANSFER_STATS_TOTAL_BYTES_RECEIVED);
+        uiStats.m_slowBuckets = data.getParcelableArrayList(TunnelManager.DATA_TRANSFER_STATS_SLOW_BUCKETS);
+        uiStats.m_slowBucketsLastStartTime = data.getLong(TunnelManager.DATA_TRANSFER_STATS_SLOW_BUCKETS_LAST_START_TIME);
+        uiStats.m_fastBuckets = data.getParcelableArrayList(TunnelManager.DATA_TRANSFER_STATS_FAST_BUCKETS);
+        uiStats.m_fastBucketsLastStartTime = data.getLong(TunnelManager.DATA_TRANSFER_STATS_FAST_BUCKETS_LAST_START_TIME);
+
+        lastDownloadSpeedBytes = data.getLong(TunnelManager.DATA_TRANSFER_STATS_CURRENT_DOWNLOAD_SPEED, 0);
+        lastUploadSpeedBytes = data.getLong(TunnelManager.DATA_TRANSFER_STATS_CURRENT_UPLOAD_SPEED, 0);
     }
 
     private static class IncomingMessageHandler extends Handler {
@@ -364,7 +371,8 @@ public class TunnelServiceInteractor {
                     break;
                 case DATA_TRANSFER_STATS:
                     getDataTransferStatsFromBundle(data);
-                    tunnelServiceInteractor.dataStatsRelay.accept(state.isConnected());
+                    // Use a timestamp to ensure the signal is unique every second
+                    tunnelServiceInteractor.dataStatsRelay.accept(System.currentTimeMillis());
                     break;
                 case NFC_CONNECTION_INFO_EXCHANGE_EXPORT:
                     if (tunnelServiceInteractor.nfcExportListener != null) {

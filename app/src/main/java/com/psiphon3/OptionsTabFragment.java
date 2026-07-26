@@ -69,8 +69,6 @@ public class OptionsTabFragment extends PsiphonPreferenceFragmentCompat {
             }
         });
 
-        Preference feedbackPreference = findPreference(getContext().getString(R.string.feedbackPreferenceKey));
-        feedbackPreference.setIntent(new Intent(getActivity(), FeedbackActivity.class));
 
         Preference moreOptionsPreference = findPreference(getContext().getString(R.string.moreOptionsPreferenceKey));
         moreOptionsPreference.setOnPreferenceClickListener(__ -> {

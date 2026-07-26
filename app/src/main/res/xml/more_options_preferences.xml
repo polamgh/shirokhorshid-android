@@ -177,7 +177,7 @@
         android:title="@string/preference_category_info_title">
         <Preference
             android:icon="@drawable/baseline_info_white_24"
-            android:key="preferenceAboutShirOKhorshid"
+            android:key="preferenceAboutAzadiTunnel"
             android:title="@string/unofficial_disclaimer_about_title"
             android:summary="@string/unofficial_disclaimer_short" />
         <Preference

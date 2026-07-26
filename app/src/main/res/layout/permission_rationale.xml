@@ -33,7 +33,7 @@
                 android:layout_gravity="top"
                 android:paddingTop="6dip"
                 android:paddingEnd="10dip"
-                android:src="@drawable/ic_psiphon_alert_notification" />
+                android:src="@drawable/ic_app_logo" />
 
             <TextView
                 android:id="@+id/alertTitle"

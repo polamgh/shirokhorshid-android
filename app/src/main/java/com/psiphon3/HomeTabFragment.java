@@ -110,7 +110,7 @@ public class HomeTabFragment extends Fragment {
         statusLayout = view.findViewById(R.id.statusLayout);
         statusViewImage = view.findViewById(R.id.statusViewImage);
         // Use Lion & Sun emblem for all states; connection state shown via alpha/animation
-        statusViewImage.setImageResource(R.drawable.lion_and_sun);
+        statusViewImage.setImageResource(R.drawable.ic_app_logo);
         statusViewImage.setImageAlpha(77); // Start dimmed (disconnected)
 
         lastLogEntryTv = view.findViewById(R.id.lastlogline);

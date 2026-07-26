@@ -575,8 +575,8 @@ public class MoreOptionsPreferenceActivity extends LocalizedActivities.AppCompat
 
         private void updateConduitModeSummary(ListPreference preference, String value) {
             switch (value) {
-                case "shirokhorshid":
-                    preference.setSummary(getString(R.string.conduitModeSummaryShirOKhorshid));
+                case "azaditunnel":
+                    preference.setSummary(getString(R.string.conduitModeSummaryAzadiTunnel));
                     break;
                 case "public":
                     preference.setSummary(getString(R.string.conduitModeSummaryPublic));
@@ -885,7 +885,7 @@ public class MoreOptionsPreferenceActivity extends LocalizedActivities.AppCompat
         private void setupAbouts(PreferenceScreen preferences) {
             setupAbout(preferences.findPreference(getString(R.string.preferenceAbout)), EmbeddedValues.INFO_LINK_URL);
             setupAbout(preferences.findPreference(getString(R.string.preferenceAboutMalAware)), getString(R.string.AboutMalAwareLink));
-            setupAboutShirOKhorshid(preferences.findPreference("preferenceAboutShirOKhorshid"));
+            setupAboutAzadiTunnel(preferences.findPreference("preferenceAboutAzadiTunnel"));
         }
 
         private void setupAbout(Preference pref, String aboutURL) {
@@ -900,7 +900,7 @@ public class MoreOptionsPreferenceActivity extends LocalizedActivities.AppCompat
             });
         }
 
-        private void setupAboutShirOKhorshid(Preference pref) {
+        private void setupAboutAzadiTunnel(Preference pref) {
             if (pref == null) return;
             pref.setOnPreferenceClickListener(preference -> {
                 SpannableString message = new SpannableString(

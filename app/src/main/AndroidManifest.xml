@@ -16,7 +16,6 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <!-- required for targetSdk 30+ to show all apps in the VPN exclusions dialog -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- instruct manifest merger to remove fine location permissions from the final manifest -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove"/>
     <!-- instruct manifest merger to remove any external storage permissions from the final manifest -->
@@ -56,9 +55,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Accepts URIs in the form of "shirokhorshid://settings" -->
+                <!-- Accepts URIs in the form of "azaditunnel://settings" -->
                 <data
-                    android:scheme="shirokhorshid"
+                    android:scheme="azaditunnel"
                     android:host="settings" />
             </intent-filter>
         </activity>
@@ -67,7 +66,7 @@
             android:exported="false"
             android:targetActivity="com.psiphon3.MainActivity" />
 
-        <!-- Disguise: Default identity (Shir o Khorshid) -->
+        <!-- Disguise: Default identity (AzadiTunnel) -->
         <activity-alias
             android:name=".LauncherDefault"
             android:label="@string/app_name"
@@ -155,7 +154,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!-- Accepts URIs that begin with "psiphon://feedback” -->
                 <data
-                    android:scheme="shirokhorshid"
+                    android:scheme="azaditunnel"
                     android:host="feedback" />
             </intent-filter>
         </activity>
@@ -189,10 +188,6 @@
         <activity android:theme="@style/Theme.DialogAlert"
             android:excludeFromRecents="true"
             android:name=".LocationPermissionRationaleActivity" />
-        <service
-            android:name=".PsiphonCrashService"
-            android:exported="false"
-            android:process=":PsiphonCrashService" />
         <activity android:theme="@style/Theme.DialogAlert"
             android:name=".PsiphonBumpNfcReaderActivity" >
         </activity>
@@ -229,7 +224,7 @@
             android:name=".log.LoggingContentProvider"
             android:exported="false"
             android:process=":LoggingContentProvider"
-            android:authorities="com.shirokhorshid.vpn.LoggingContentProvider" />
+            android:authorities="com.azaditunnel.vpn.LoggingContentProvider" />
         <!-- PsiphonUpdateReceiver receives intents that trigger upgrade checking. -->
         <receiver android:name=".PsiphonUpdateReceiver"
             android:exported="false">
@@ -259,7 +254,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.shirokhorshid.vpn.UpgradeFileProvider"
+            android:authorities="com.azaditunnel.vpn.UpgradeFileProvider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

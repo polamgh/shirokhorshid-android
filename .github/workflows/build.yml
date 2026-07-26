@@ -10,7 +10,7 @@ on:
       tunnel_core_ref:
         description: 'Tunnel-core branch/tag/commit to build AAR from'
         type: string
-        default: 'shirokhorshid'
+        default: 'azaditunnel'
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout tunnel-core
         uses: actions/checkout@v4
         with:
-          repository: shirokhorshid/psiphon-tunnel-core
+          repository: azaditunnel/psiphon-tunnel-core
           ref: ${{ inputs.tunnel_core_ref }}
           path: psiphon-tunnel-core
 
@@ -211,6 +211,8 @@ jobs:
           else
             ./gradlew assembleRelease
           fi
+          chmod +x scripts/check-16k-page-size.sh
+          ./scripts/check-16k-page-size.sh app/build/outputs/apk/release/AzadiTunnel-release.apk
         env:
           PSIPHON_PROPAGATION_CHANNEL_ID: ${{ secrets.PSIPHON_PROPAGATION_CHANNEL_ID }}
           PSIPHON_SPONSOR_ID: ${{ secrets.PSIPHON_SPONSOR_ID }}
@@ -237,8 +239,8 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: shirokhorshid-apk
-          path: app/build/outputs/apk/release/ShirOKhorshid-release.apk
+          name: azaditunnel-apk
+          path: app/build/outputs/apk/release/AzadiTunnel-release.apk
           retention-days: 1
 
   release:
@@ -250,7 +252,7 @@ jobs:
       - name: Download APK artifact
         uses: actions/download-artifact@v4
         with:
-          name: shirokhorshid-apk
+          name: azaditunnel-apk
 
       - name: Set version info
         id: version
@@ -262,8 +264,8 @@ jobs:
 
       - name: Prepare release assets
         run: |
-          mv ShirOKhorshid-release.apk "ShirOKhorshid-${{ steps.version.outputs.calver }}.apk"
-          APK="ShirOKhorshid-${{ steps.version.outputs.calver }}.apk"
+          mv AzadiTunnel-release.apk "AzadiTunnel-${{ steps.version.outputs.calver }}.apk"
+          APK="AzadiTunnel-${{ steps.version.outputs.calver }}.apk"
           SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
           MD5=$(md5sum "$APK" | cut -d' ' -f1)
           echo "::notice::SHA-256: $SHA256"
@@ -278,11 +280,11 @@ jobs:
 
       - name: Create release
         run: |
-          APK="ShirOKhorshid-${{ steps.version.outputs.calver }}.apk"
+          APK="AzadiTunnel-${{ steps.version.outputs.calver }}.apk"
           gh release create "${{ steps.version.outputs.tag }}" \
             "$APK" \
             --repo "${{ github.repository }}" \
-            --title "ShirOKhorshid ${{ steps.version.outputs.calver }}" \
+            --title "Azadi Tunnel ${{ steps.version.outputs.calver }}" \
             --notes-file checksums.txt \
             --latest
         env:

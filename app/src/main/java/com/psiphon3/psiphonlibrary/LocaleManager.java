@@ -84,12 +84,32 @@ public class LocaleManager {
         return updateResources(context, language);
     }
 
-    Context resetToSystemLocale(Context context) {
+    public Context resetToSystemLocale(Context context) {
         return setNewLocale(context, USE_SYSTEM_LANGUAGE_VAL);
     }
 
+    /** Apply language and persist for next launch. */
+    public Context applyLanguage(Context context, String languageCode) {
+        String code = (languageCode == null || languageCode.isEmpty()) ? USE_SYSTEM_LANGUAGE_VAL : languageCode;
+        return setNewLocale(context, code);
+    }
+
+    /** Build a localized context without persisting (for Compose UI). */
+    public Context wrapWithLanguage(Context context, String languageCode) {
+        String code = (languageCode == null || languageCode.isEmpty()) ? USE_SYSTEM_LANGUAGE_VAL : languageCode;
+        return updateResources(context, code);
+    }
+
     public String getLanguage() {
-        return m_preferences.getString(LANGUAGE_KEY, USE_SYSTEM_LANGUAGE_VAL);
+        String lang = m_preferences.getString(LANGUAGE_KEY, USE_SYSTEM_LANGUAGE_VAL);
+        boolean hasChosenLanguage = m_preferences.getBoolean("hasChosenLanguagePreference", false);
+        String preferredLanguage = m_preferences.getString("preferenceLanguageSelection", null);
+        if (hasChosenLanguage && preferredLanguage != null && !preferredLanguage.isEmpty()
+                && !preferredLanguage.equals(lang)) {
+            persistLanguage(preferredLanguage);
+            return preferredLanguage;
+        }
+        return lang;
     }
 
     public boolean isSetToSystemLocale() {

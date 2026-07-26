@@ -14,10 +14,6 @@
         android:key="@string/proxyOptionsPreferenceKey"
         android:title="@string/label_proxy_settings" />
     <Preference
-        android:key="@string/feedbackPreferenceKey"
-        android:icon="@drawable/baseline_send_white_24"
-        android:title="@string/feedback" />
-    <Preference
         android:key="@string/moreOptionsPreferenceKey"
         android:icon="@drawable/baseline_settings_white_24"
         android:title="@string/moreOptions"

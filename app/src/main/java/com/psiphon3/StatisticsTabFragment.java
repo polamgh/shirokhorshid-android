@@ -40,8 +40,9 @@ public class StatisticsTabFragment extends Fragment {
     private DataTransferGraph fastSentGraph;
     private DataTransferGraph fastReceivedGraph;
 
-    private void updateStatisticsUICallback(boolean isConnected) {
+    private void updateStatisticsUICallback(Object ignored) {
         DataTransferStats.DataTransferStatsForUI dataTransferStats = DataTransferStats.getDataTransferStatsForUI();
+        boolean isConnected = dataTransferStats.getElapsedTime() > 0;
         elapsedConnectionTimeView.setText(isConnected ? getString(R.string.connected_elapsed_time,
                 Utils.elapsedTimeToDisplay(dataTransferStats.getElapsedTime())) : getString(R.string.disconnected));
         totalSentView.setText(Utils.byteCountToDisplaySize(dataTransferStats.getTotalBytesSent(), false));
@@ -76,7 +77,7 @@ public class StatisticsTabFragment extends Fragment {
                         .getTunnelServiceInteractor();
 
         compositeDisposable.add(tunnelServiceInteractor.dataStatsFlowable()
-                .startWith(Boolean.FALSE)
+                .startWith(0L)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnNext(this::updateStatisticsUICallback)
                 .subscribe());

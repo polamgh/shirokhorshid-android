@@ -71,5 +71,7 @@ LOCAL_SRC_FILES := \
         tun2socks/SocksUdpGwClient.c \
         udpgw_client/UdpGwClient.c
 
+LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
+
 include $(BUILD_SHARED_LIBRARY)
 

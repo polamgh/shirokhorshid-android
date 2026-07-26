@@ -64,6 +64,9 @@ public class VpnManager {
     private final AtomicReference<ParcelFileDescriptor> tunFd;
     private final AtomicBoolean isRoutingThroughTunnel;
     private volatile boolean mShareProxyOnNetwork = false;
+    private volatile boolean mProxyOnlyMode = false;
+    private volatile String mSecureDnsServer = null;
+    private final java.util.List<String[]> mBypassExcludedRoutes = new java.util.ArrayList<>();
     private Thread mTun2SocksThread;
     private WeakReference<VpnServiceBuilderProvider> vpnServiceBuilderProviderRef;
 
@@ -178,8 +181,34 @@ public class VpnManager {
         mShareProxyOnNetwork = share;
     }
 
+    public void setProxyOnlyMode(boolean proxyOnly) {
+        mProxyOnlyMode = proxyOnly;
+    }
+
+    public boolean isProxyOnlyMode() {
+        return mProxyOnlyMode;
+    }
+
+    public void setSecureDnsServer(String dnsServer) {
+        mSecureDnsServer = dnsServer;
+    }
+
+    public void setBypassExcludedRoutes(java.util.List<String[]> routes) {
+        mBypassExcludedRoutes.clear();
+        if (routes != null) {
+            mBypassExcludedRoutes.addAll(routes);
+        }
+    }
+
     // Pick a private address and create the VPN interface
     public synchronized void vpnEstablish() {
+        if (mProxyOnlyMode) {
+            com.psiphon3.azadi.AzadiEventLogger.logSync("PROXY_ONLY_NO_DEFAULT_ROUTE", null);
+            com.psiphon3.azadi.AzadiEventLogger.logSync("PROXY_ONLY_NO_SYSTEM_PROXY", null);
+            isRoutingThroughTunnel.set(false);
+            return;
+        }
+
         mPrivateAddress = selectPrivateAddress();
 
         Locale previousLocale = Locale.getDefault();
@@ -188,7 +217,9 @@ public class VpnManager {
             // Workaround for https://code.google.com/p/android/issues/detail?id=61096
             Locale.setDefault(new Locale("en"));
 
-            String dnsResolver = mPrivateAddress.mRouter;
+            String dnsResolver = mSecureDnsServer != null && !mSecureDnsServer.isEmpty()
+                    ? mSecureDnsServer
+                    : mPrivateAddress.mRouter;
 
             VpnServiceBuilderProvider vpnServiceBuilderProvider = vpnServiceBuilderProviderRef.get();
             if (vpnServiceBuilderProvider == null) {
@@ -200,18 +231,10 @@ public class VpnManager {
                     .addAddress(mPrivateAddress.mIpAddress, mPrivateAddress.mPrefixLength)
                     .addDnsServer(dnsResolver);
 
-            if (mShareProxyOnNetwork) {
-                // When LAN sharing is enabled, route all traffic through VPN EXCEPT
-                // private LAN subnets so other devices can reach the proxy directly.
-                addLanExcludedRoutes(builder);
-            } else {
-                builder.addRoute("0.0.0.0", 0);
-            }
+            applyVpnRoutes(builder);
 
             // Add route for the VPN interface's own subnet to ensure traffic to the
             // tun2socks gateway (DNS resolver) is routed through the tun interface.
-            // When LAN sharing is enabled, use a /24 route for just the VPN gateway
-            // instead of the full private subnet, to avoid re-adding the excluded range.
             if (mShareProxyOnNetwork) {
                 builder.addRoute(mPrivateAddress.mSubnet, 24);
             } else {
@@ -242,35 +265,73 @@ public class VpnManager {
     };
 
     /**
-     * Add VPN routes that cover 0.0.0.0/0 minus the RFC 1918 private LAN subnets.
-     * On API 33+ uses {@code excludeRoute(IpPrefix)} for clarity.
-     * On older APIs, computes the complementary CIDR routes programmatically.
+     * Apply default IPv4 routes minus LAN private ranges (when sharing) and bypass exclusions.
+     * Uses excludeRoute on API 33+ and CIDR subtraction on older APIs.
      */
-    private static void addLanExcludedRoutes(VpnService.Builder builder) {
+    private void applyVpnRoutes(VpnService.Builder builder) {
         if (Build.VERSION.SDK_INT >= 33) {
-            // API 33+ (Android 13): use excludeRoute directly — clean and declarative
+            builder.addRoute("0.0.0.0", 0);
+            if (mShareProxyOnNetwork) {
+                for (String[] subnet : LAN_SUBNETS) {
+                    try {
+                        InetAddress addr = InetAddress.getByName(subnet[0]);
+                        builder.excludeRoute(new IpPrefix(addr, Integer.parseInt(subnet[1])));
+                    } catch (UnknownHostException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            for (String[] route : mBypassExcludedRoutes) {
+                try {
+                    InetAddress addr = InetAddress.getByName(route[0]);
+                    builder.excludeRoute(new IpPrefix(addr, Integer.parseInt(route[1])));
+                } catch (UnknownHostException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return;
+        }
+
+        List<long[]> routes = new ArrayList<>();
+        routes.add(new long[]{0L, 0});
+
+        if (mShareProxyOnNetwork) {
+            for (String[] subnet : LAN_SUBNETS) {
+                routes = subtractCidr(routes, ipToLong(subnet[0]), Integer.parseInt(subnet[1]));
+            }
+        }
+        for (String[] route : mBypassExcludedRoutes) {
+            routes = subtractCidr(routes, ipToLong(route[0]), Integer.parseInt(route[1]));
+        }
+        for (long[] route : routes) {
+            builder.addRoute(longToIp(route[0]), (int) route[1]);
+        }
+    }
+
+    /** @deprecated replaced by {@link #applyVpnRoutes(VpnService.Builder)} */
+    private void applyBypassExcludedRoutes(VpnService.Builder builder) {
+        applyVpnRoutes(builder);
+    }
+
+    /** @deprecated replaced by {@link #applyVpnRoutes(VpnService.Builder)} */
+    private static void addLanExcludedRoutes(VpnService.Builder builder) {
+        // kept for binary compatibility; logic moved to applyVpnRoutes
+        if (Build.VERSION.SDK_INT >= 33) {
             builder.addRoute("0.0.0.0", 0);
             for (String[] subnet : LAN_SUBNETS) {
                 try {
                     InetAddress addr = InetAddress.getByName(subnet[0]);
                     builder.excludeRoute(new IpPrefix(addr, Integer.parseInt(subnet[1])));
                 } catch (UnknownHostException e) {
-                    // Static addresses, cannot fail
                     throw new RuntimeException(e);
                 }
             }
         } else {
-            // API 14-32: compute complementary routes by subtracting each private
-            // range from the full IPv4 address space
             List<long[]> routes = new ArrayList<>();
-            routes.add(new long[]{0L, 0}); // 0.0.0.0/0
-
+            routes.add(new long[]{0L, 0});
             for (String[] subnet : LAN_SUBNETS) {
-                long ip = ipToLong(subnet[0]);
-                int prefix = Integer.parseInt(subnet[1]);
-                routes = subtractCidr(routes, ip, prefix);
+                routes = subtractCidr(routes, ipToLong(subnet[0]), Integer.parseInt(subnet[1]));
             }
-
             for (long[] route : routes) {
                 builder.addRoute(longToIp(route[0]), (int) route[1]);
             }
@@ -379,6 +440,11 @@ public class VpnManager {
 
     // Start routing traffic via tunnel by starting tun2socks if it is not running already
     public synchronized void routeThroughTunnel(int socksProxyPort) {
+        if (mProxyOnlyMode) {
+            com.psiphon3.azadi.AzadiEventLogger.logSync("PROXY_ONLY_WARNING_NOT_FULL_VPN", null);
+            isRoutingThroughTunnel.set(true);
+            return;
+        }
         if (!isRoutingThroughTunnel.compareAndSet(false, true)) {
             return;
         }

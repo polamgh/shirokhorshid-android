@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="UpgradeManager.UpgradeAvailableNotificationId">Shir o Khorshid Upgrade Available Notification</string>
+    <string name="UpgradeManager.UpgradeAvailableNotificationId">AzadiTunnel Upgrade Available Notification</string>
     <string name="preferencesNotifications">preferencesNotifications</string>
     <string name="preferenceNotificationsWithSound">preferenceNotificationsWithSoundDefaultOff</string>
     <string name="preferenceNotificationsWithVibrate">preferenceNotificationsWithVibrateDefaultOff</string>
@@ -41,7 +41,7 @@
     <string name="moreOptionsPreferencesName">moreOptionsPreferencesName</string>
     <string name="nfcBumpPreference" translatable="false">nfcBumpPreference</string>
 
-    <string name="upgrade_checker_service_name">ShirOKhorshid:UpgradeChecker</string>
+    <string name="upgrade_checker_service_name">AzadiTunnel:UpgradeChecker</string>
 
     <string name="current_local_http_proxy_port">currentLocalHttpProxyPort</string>
     <string name="proxyOptionsPreferenceKey" translatable="false">proxyOptionsPreferenceKey</string>
@@ -57,6 +57,26 @@
     <string name="serviceRunningPreference" translatable="false">serviceRunningPreference</string>
     <string name="cdnFrontingCustomIpListPreference" translatable="false">cdnFrontingCustomIpListPreference</string>
     <string name="cdnFrontingCustomSniPreference" translatable="false">cdnFrontingCustomSniPreference</string>
+    <string name="cdnFrontingUseBuiltInScanPreference" translatable="false">cdnFrontingUseBuiltInScanPreference</string>
+    <string name="smartFallbackChainPreference" translatable="false">smartFallbackChainPreference</string>
+    <string name="autoReconnectPreference" translatable="false">autoReconnectPreference</string>
+    <string name="connectOnLaunchPreference" translatable="false">connectOnLaunchPreference</string>
+    <string name="vpnOnDemandEnabledPreference" translatable="false">vpnOnDemandEnabledPreference</string>
+    <string name="vpnOnDemandModePreference" translatable="false">vpnOnDemandModePreference</string>
+    <string name="proxyOnlyModePreference" translatable="false">proxyOnlyModePreference</string>
+    <string name="bypassIranIPsPreference" translatable="false">bypassIranIPsPreference</string>
+    <string name="bypassCustomRoutesPreference" translatable="false">bypassCustomRoutesPreference</string>
+    <string name="bypassDomainsPreference" translatable="false">bypassDomainsPreference</string>
+    <string name="bypassStrictModePreference" translatable="false">bypassStrictModePreference</string>
+    <string name="secureDNSModePreference" translatable="false">secureDNSModePreference</string>
+    <string name="secureDNSProviderPreference" translatable="false">secureDNSProviderPreference</string>
+    <string name="customDoHURLPreference" translatable="false">customDoHURLPreference</string>
+    <string name="customDoTHostPreference" translatable="false">customDoTHostPreference</string>
+    <string name="blockCleartextDNSPreference" translatable="false">blockCleartextDNSPreference</string>
+    <string name="hasAcceptedConnectionDisclaimerPreference" translatable="false">hasAcceptedConnectionDisclaimerPreference</string>
+    <string name="hasAcceptedVPNDisclosurePreference" translatable="false">hasAcceptedVPNDisclosurePreference</string>
+    <string name="hasCompletedOnboardingPreference" translatable="false">hasCompletedOnboardingPreference</string>
+    <string name="hasChosenLanguagePreference" translatable="false">hasChosenLanguagePreference</string>
 
     <string-array name="languages">
         <item>فارسی,fa</item>
@@ -79,13 +99,13 @@
 
     <string-array name="conduit_mode_entries" translatable="false">
         <item>@string/conduit_mode_auto</item>
-        <item>@string/conduit_mode_shirokhorshid</item>
+        <item>@string/conduit_mode_azaditunnel</item>
         <item>@string/conduit_mode_public</item>
     </string-array>
 
     <string-array name="conduit_mode_values" translatable="false">
         <item>auto</item>
-        <item>shirokhorshid</item>
+        <item>azaditunnel</item>
         <item>public</item>
     </string-array>
 

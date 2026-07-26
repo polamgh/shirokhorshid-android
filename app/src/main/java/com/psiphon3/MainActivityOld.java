@@ -88,15 +88,14 @@ import io.reactivex.Completable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 
-public class MainActivity extends LocalizedActivities.AppCompatActivity {
+public class MainActivityOld extends LocalizedActivities.AppCompatActivity {
 
-    public MainActivity() {
+    public MainActivityOld() {
         Utils.initializeSecureRandom();
     }
 
     static final int REQUEST_CODE_PERMISSIONS = 103;
     static final int REQUEST_CODE_NOTIFICATION_RATIONALE = 104;
-    static final int REQUEST_CODE_LOCATION_RATIONALE = 105;
 
     private static final String CURRENT_TAB = "currentTab";
     private final CompositeDisposable compositeDisposable = new CompositeDisposable();
@@ -271,14 +270,6 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
             // Check suggested workflow for details:
             // https://developer.android.com/training/permissions/requesting#workflow_for_requesting_permissions
             checkPermissions();
-
-            // If we are on Android pre-M or already have coarse location permission, start location
-            // update.
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-                    ContextCompat.checkSelfPermission(this,
-                            Manifest.permission.ACCESS_COARSE_LOCATION) == PermissionChecker.PERMISSION_GRANTED) {
-                Location.runCurrentLocationUpdate(this);
-            }
         }
     }
 
@@ -298,8 +289,7 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_NOTIFICATION_RATIONALE ||
-                requestCode == REQUEST_CODE_LOCATION_RATIONALE) {
+        if (requestCode == REQUEST_CODE_NOTIFICATION_RATIONALE) {
             // If we are returning from a permission rationale activity, run permissions check
             // when we resume again since the previous check may have been interrupted.
             checkPermissions();
@@ -309,14 +299,7 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            // There could be multiple permissions requested, check if we were granted a location
-            // one and start location update if so.
-            for (int i = 0; i < permissions.length; i++) {
-                if (permissions[i].equals(Manifest.permission.ACCESS_COARSE_LOCATION) &&
-                        grantResults[i] == PermissionChecker.PERMISSION_GRANTED) {
-                    Location.runCurrentLocationUpdate(this);
-                }
-            }
+            // Permission handling
         }
     }
 
@@ -400,25 +383,6 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
                                 REQUEST_CODE_NOTIFICATION_RATIONALE);
                         return;
                     }
-                }
-            }
-
-            // Check if we need coarse location permission
-            final AppPreferences mp = new AppPreferences(getApplicationContext());
-            int deviceLocationPrecision =  mp.getInt(getString(R.string.deviceLocationPrecisionParameter), 0);
-
-            if (deviceLocationPrecision > 0 && deviceLocationPrecision <= 12 &&
-                    ContextCompat.checkSelfPermission(this,
-                            Manifest.permission.ACCESS_COARSE_LOCATION) != PermissionChecker.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-                // Check if we should show a rationale for location permission
-                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                    // Start location rationale activity and abort further permission checks and requests.
-                    // We will run permissions check again the rationale activity is finished.
-                    startActivityForResult(
-                            new Intent(this, LocationPermissionRationaleActivity.class),
-                            REQUEST_CODE_LOCATION_RATIONALE);
-                    return;
                 }
             }
 
@@ -742,8 +706,8 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
         }
         // Handle external deep links first
         // Examples:
-        // shirokhorshid://settings
-        // shirokhorshid://settings/vpn
+        // azaditunnel://settings
+        // azaditunnel://settings/vpn
         if (handleDeepLinkIntent(intent)) {
             return;
         }
@@ -760,30 +724,7 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
         }
 
         if (0 == intent.getAction().compareTo(TunnelManager.INTENT_ACTION_HANDSHAKE)) {
-            Bundle data = intent.getExtras();
-            if (data != null) {
-                ArrayList<String> homePages = data.getStringArrayList(TunnelManager.DATA_TUNNEL_STATE_HOME_PAGES);
-                if (homePages != null && homePages.size() > 0) {
-                    String url = homePages.get(0);
-                    // If the URL should not be open in the embedded web view then try and open it
-                    // in an external browser. The home tab fragment will make a decision to open
-                    // the URL in an embedded web view independently, if needed.
-                    if (!shouldLoadInEmbeddedWebView(url)) {
-                        // Extract VPN data from bundle
-                        VpnAppsUtils.VpnAppsExclusionSetting vpnMode = (VpnAppsUtils.VpnAppsExclusionSetting) data.getSerializable(TunnelManager.DATA_TUNNEL_STATE_VPN_MODE);
-                        ArrayList<String> vpnApps = data.getStringArrayList(TunnelManager.DATA_TUNNEL_STATE_VPN_APPS);
-                        if (vpnMode == null) {
-                            vpnMode = VpnAppsUtils.VpnAppsExclusionSetting.ALL_APPS;
-                        }
-                        VpnAppsUtils.AppTunneledChecker isAppTunneled = VpnAppsUtils.createAppTunneledChecker(vpnMode, vpnApps);
-                        if (shouldAutoOpenHomepage()) {
-                            displayBrowser(this, url, isAppTunneled);
-                        }
-                    } else {
-                        selectTabByTag("home");
-                    }
-                }
-            }
+            // Auto-opening browser is disabled as per user request
         } else if (0 == intent.getAction().compareTo(TunnelManager.INTENT_ACTION_SELECTED_REGION_NOT_AVAILABLE)) {
             // At this point the service should be stopped and the persisted region selection set
             // to PsiphonConstants.REGION_CODE_ANY by TunnelManager, so we only need to update the
