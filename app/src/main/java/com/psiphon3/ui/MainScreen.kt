@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -154,12 +155,17 @@ fun MainScreen(
         }
     }
 
+    val context = LocalContext.current
+    val availableRegions = remember(showRegionPicker) {
+        if (showRegionPicker) com.psiphon3.azadi.PsiphonRegionList.getAvailable(context) else emptyList()
+    }
+
     if (showRegionPicker) {
         RegionPickerSheet(
             selectedRegionCode = selectedRegionCode,
             onRegionSelected = onRegionSelected,
             onDismiss = { showRegionPicker = false },
-            regionCodes = com.psiphon3.azadi.PsiphonRegionList.all
+            regionCodes = availableRegions
         )
     }
 }

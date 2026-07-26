@@ -115,6 +115,8 @@ public class TunnelServiceInteractor {
     public void onStop(Context context) {
         isStopped = true;
         tunnelStateRelay.accept(TunnelState.unknown());
+        lastDownloadSpeedBytes = 0;
+        lastUploadSpeedBytes = 0;
         if (serviceBindingFactory != null) {
             sendServiceMessageCompletable(TunnelManager.ClientToServiceMessage.UNREGISTER.ordinal(), null)
                     .andThen(Completable.fromAction(() -> serviceBindingFactory.unbind(context)))
@@ -155,9 +157,20 @@ public class TunnelServiceInteractor {
     }
 
     public void stopTunnelService() {
-        tunnelStateRelay.accept(TunnelState.unknown());
+        stopTunnelService(null);
+    }
+
+    public void stopTunnelService(Context ctx) {
+        tunnelStateRelay.accept(TunnelState.stopped());
         sendServiceMessageCompletable(TunnelManager.ClientToServiceMessage.STOP_SERVICE.ordinal(), null)
                 .subscribe();
+        try {
+            if (ctx != null) {
+                Intent stopIntent = new Intent(ctx, TunnelVpnService.class);
+                stopIntent.setAction(TunnelManager.INTENT_ACTION_STOP_TUNNEL);
+                ctx.startService(stopIntent);
+            }
+        } catch (Exception ignored) {}
     }
 
     public void scheduleVpnServiceRestart(Context context) {
@@ -248,6 +261,10 @@ public class TunnelServiceInteractor {
         serviceMessengerDisposable = serviceBindingFactory.getMessengerObservable()
                 .doOnComplete(() -> tunnelStateRelay.accept(TunnelState.stopped()))
                 .doOnComplete(() -> dataStatsRelay.accept(0L))
+                .doOnComplete(() -> {
+                    lastDownloadSpeedBytes = 0;
+                    lastUploadSpeedBytes = 0;
+                })
                 .subscribe();
         Bundle data = new Bundle();
         data.putBoolean(TunnelManager.IS_CLIENT_AN_ACTIVITY, shouldRegisterAsActivity);

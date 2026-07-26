@@ -463,11 +463,17 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
     // Implementation of android.app.Service.onDestroy
     void onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            m_parentService.stopForeground(Service.STOP_FOREGROUND_REMOVE);
+        } else {
+            m_parentService.stopForeground(true);
+        }
         if (mNotificationManager != null) {
             // Cancel main service notification
             mNotificationManager.cancel(R.string.psiphon_service_notification_id);
             // Cancel upstream proxy error notification
             mNotificationManager.cancel(R.id.notification_id_upstream_proxy_error);
+            mNotificationManager.cancelAll();
         }
 
         stopAndWaitForTunnel();
@@ -888,13 +894,6 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
                 case STOP_SERVICE:
                     if (manager != null) {
-                        // Ignore the message if the sender is not registered
-                        if (manager.mClients.get(msg.replyTo.hashCode()) == null) {
-                            return;
-                        }
-                        // Do not send any more messages after a stop was commanded.
-                        // Client side will receive a ServiceConnection.onServiceDisconnected callback
-                        // when the service finally stops.
                         manager.mClients.clear();
                         manager.signalStopService();
                     }
@@ -1273,7 +1272,15 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
             MyLog.i(R.string.stopped_tunnel, MyLog.Sensitivity.NOT_SENSITIVE);
 
             // Stop service
-            m_parentService.stopForeground(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                m_parentService.stopForeground(Service.STOP_FOREGROUND_REMOVE);
+            } else {
+                m_parentService.stopForeground(true);
+            }
+            if (mNotificationManager != null) {
+                mNotificationManager.cancel(R.string.psiphon_service_notification_id);
+                mNotificationManager.cancelAll();
+            }
             m_parentService.stopSelf();
         }
     }

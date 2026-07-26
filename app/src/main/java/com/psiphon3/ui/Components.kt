@@ -409,19 +409,21 @@ fun TrafficStatCard(
     modifier: Modifier = Modifier
 ) {
     GlassCard(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(iconBackground.copy(alpha = 0.22f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = iconBackground, modifier = Modifier.size(16.dp))
+        Column(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(iconBackground.copy(alpha = 0.22f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = iconBackground, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(title, color = AppColors.SubtitleText, fontSize = 12.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
-        Spacer(Modifier.height(10.dp))
-        Text(title, color = AppColors.SubtitleText, fontSize = 12.sp)
-        Spacer(Modifier.height(4.dp))
-        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -435,7 +437,7 @@ fun RegionPickerSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val regions = remember(regionCodes) {
-        val codes = regionCodes ?: com.psiphon3.azadi.PsiphonRegionList.all
+        val codes = regionCodes ?: com.psiphon3.azadi.PsiphonRegionList.allSupported
         codes.mapNotNull { code -> ALL_REGIONS.find { it.code == code } }
     }
 

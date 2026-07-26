@@ -49,7 +49,7 @@ class ConnectionCoordinator(
             leakSummary = null,
             pingMs = -1
         )
-        interactor.stopTunnelService()
+        interactor.stopTunnelService(context)
         AzadiEventLogger.log("ANDROID_VPN_SERVICE_STOPPED")
         AzadiEventLogger.log("PSIPHON_STOPPED")
         AzadiEventLogger.log("TUNNEL_STOP_CLEANUP")

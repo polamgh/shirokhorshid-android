@@ -55,7 +55,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
     }
 
     enum class PurchaseState {
-        UNKNOWN, NOT_PURCHASED, SUBSCRIBED
+        UNKNOWN, NOT_PURCHASED, PURCHASED, SUBSCRIBED, EXPIRED
     }
 
     fun startConnection() {

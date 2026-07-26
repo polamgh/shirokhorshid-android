@@ -290,15 +290,26 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                     else -> stringResource(R.string.dashboard_disconnected)
                 }
 
-                val trafficStats = remember(dataStats, ipAddress, connectedCity, connectedCountry, lifetimeDownload, lifetimeUpload) {
-                    TrafficStats(
-                        downloadSpeed = Utils.byteCountToDisplaySize(TunnelServiceInteractor.lastDownloadSpeedBytes, true) + "/s",
-                        uploadSpeed = Utils.byteCountToDisplaySize(TunnelServiceInteractor.lastUploadSpeedBytes, true) + "/s",
-                        totalDownload = Utils.byteCountToDisplaySize(lifetimeDownload, false),
-                        totalUpload = Utils.byteCountToDisplaySize(lifetimeUpload, false),
-                        ipAddress = ipAddress,
-                        connectedCountry = connectedCountry
-                    )
+                val trafficStats = remember(connectionStatus, dataStats, ipAddress, connectedCity, connectedCountry, lifetimeDownload, lifetimeUpload) {
+                    if (connectionStatus == VpnConnectionStatus.CONNECTED) {
+                        TrafficStats(
+                            downloadSpeed = Utils.byteCountToDisplaySize(TunnelServiceInteractor.lastDownloadSpeedBytes, true) + "/s",
+                            uploadSpeed = Utils.byteCountToDisplaySize(TunnelServiceInteractor.lastUploadSpeedBytes, true) + "/s",
+                            totalDownload = Utils.byteCountToDisplaySize(lifetimeDownload, false),
+                            totalUpload = Utils.byteCountToDisplaySize(lifetimeUpload, false),
+                            ipAddress = ipAddress,
+                            connectedCountry = connectedCountry
+                        )
+                    } else {
+                        TrafficStats(
+                            downloadSpeed = "0 B/s",
+                            uploadSpeed = "0 B/s",
+                            totalDownload = Utils.byteCountToDisplaySize(lifetimeDownload, false),
+                            totalUpload = Utils.byteCountToDisplaySize(lifetimeUpload, false),
+                            ipAddress = "—",
+                            connectedCountry = ""
+                        )
+                    }
                 }
 
                 val savedBest = findBestController.loadSavedBest()
@@ -498,7 +509,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                                             minSpeedMbps = 2,
                                             conduitAllowed = azadiSettingsStore.conduitConnectAllowed(),
                                             startTunnel = { startTunnelForConnect() },
-                                            stopTunnel = { getTunnelServiceInteractor().stopTunnelService() },
+                                            stopTunnel = { getTunnelServiceInteractor().stopTunnelService(this@MainActivity) },
                                             awaitTunnelState = { awaitTunnelState() },
                                             measureSpeedMbps = { withContext(Dispatchers.IO) { NetworkUtils.measureDownloadSpeedMbps() } }
                                         )
@@ -533,7 +544,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                                             if (wasRunning) {
                                                 SettingsReconnectHelper.reconnectIfConnected(
                                                     isRunning = { true },
-                                                    disconnect = { interactor.stopTunnelService() },
+                                                    disconnect = { interactor.stopTunnelService(this@MainActivity) },
                                                     connect = { performConnect() }
                                                 )
                                             }
@@ -684,7 +695,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
             settings = azadiSettingsStore.load(),
             validateProxy = { viewModel.validateCustomProxySettings() },
             startTunnel = { startTunnelForConnect() },
-            stopTunnel = { getTunnelServiceInteractor().stopTunnelService() },
+            stopTunnel = { getTunnelServiceInteractor().stopTunnelService(this@MainActivity) },
             awaitTunnelState = { awaitTunnelState() }
         )
     }
@@ -698,14 +709,16 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
         unselectedTextColor = Color.Gray
     )
 
-    private fun deriveConnectionStatus(tunnelState: TunnelState): VpnConnectionStatus = when {
-        tunnelState.isUnknown -> VpnConnectionStatus.WAITING
-        !tunnelState.isRunning -> VpnConnectionStatus.DISCONNECTED
-        tunnelState.connectionData()?.isConnected == true -> VpnConnectionStatus.CONNECTED
-        tunnelState.connectionData()?.networkConnectionState() ==
-            TunnelState.ConnectionData.NetworkConnectionState.WAITING_FOR_NETWORK ->
-            VpnConnectionStatus.WAITING_FOR_NETWORK
-        else -> VpnConnectionStatus.CONNECTING
+    private fun deriveConnectionStatus(tunnelState: TunnelState): VpnConnectionStatus {
+        if (tunnelState.isUnknown) return VpnConnectionStatus.WAITING
+        if (!tunnelState.isRunning) return VpnConnectionStatus.DISCONNECTED
+        val data = tunnelState.connectionData() ?: return VpnConnectionStatus.CONNECTING
+        return when {
+            data.isConnected && data.socksPort() > 0 && data.httpPort() > 0 -> VpnConnectionStatus.CONNECTED
+            data.networkConnectionState() == TunnelState.ConnectionData.NetworkConnectionState.WAITING_FOR_NETWORK ->
+                VpnConnectionStatus.WAITING_FOR_NETWORK
+            else -> VpnConnectionStatus.CONNECTING
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
