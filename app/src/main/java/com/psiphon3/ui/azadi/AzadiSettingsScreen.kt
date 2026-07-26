@@ -137,6 +137,10 @@ private fun AzadiSettingsRoot(
     var cdnCustomIps by remember(settings.cdnFrontingCustomIpList) { mutableStateOf(settings.cdnFrontingCustomIpList) }
     var cdnCustomSni by remember(settings.cdnFrontingCustomSni) { mutableStateOf(settings.cdnFrontingCustomSni) }
 
+    val availableRegions = remember(showRegionPicker) {
+        if (showRegionPicker) com.psiphon3.azadi.PsiphonRegionList.getAvailable(context) else emptyList()
+    }
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         try {
@@ -471,7 +475,7 @@ private fun AzadiSettingsRoot(
             selectedRegionCode = settings.egressRegion.ifEmpty { PsiphonConstants.REGION_CODE_ANY },
             onRegionSelected = { onPersist(settings.copy(egressRegion = it), false, "egressRegion") },
             onDismiss = { showRegionPicker = false },
-            regionCodes = PsiphonRegionList.all
+            regionCodes = availableRegions
         )
     }
     if (showProtocolPicker) {
