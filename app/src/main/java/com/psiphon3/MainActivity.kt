@@ -143,8 +143,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                     mutableStateOf(
                         when {
                             !initialSettings.hasChosenLanguage -> LaunchPhase.LANGUAGE
-                            !initialSettings.hasCompletedOnboarding -> LaunchPhase.SPLASH
-                            else -> LaunchPhase.DONE
+                            else -> LaunchPhase.SPLASH
                         }
                     )
                 }
