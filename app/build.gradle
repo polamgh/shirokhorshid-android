@@ -311,11 +311,11 @@ android {
         if (versionPropsFile.canRead()) {
             def Properties props = new Properties()
             props.load(new FileInputStream(versionPropsFile))
-            verName = props['VERSION_CODE'] ?: '1'
-            verCode = verName.toInteger()
+            verName = props['VERSION_NAME'] ?: '2.0'
+            verCode = (props['VERSION_CODE'] ?: '3').toInteger()
         } else {
-            verName = '0.0.0'
-            verCode = 1
+            verName = '2.0'
+            verCode = 3
         }
     }
 
