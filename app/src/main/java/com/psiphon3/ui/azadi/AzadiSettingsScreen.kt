@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -158,14 +159,20 @@ private fun AzadiSettingsRoot(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
-            .testTag("settingsScreen")
             .fillMaxSize()
-            .background(AppColors.Background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .background(AppColors.Background),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Column(
+            modifier = Modifier
+                .testTag("settingsScreen")
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
         Text(
             text = stringResource(R.string.azadi_tab_settings),
             color = Color.White,
@@ -468,6 +475,7 @@ private fun AzadiSettingsRoot(
         }
 
         Spacer(Modifier.height(76.dp))
+    }
     }
 
     if (showRegionPicker) {

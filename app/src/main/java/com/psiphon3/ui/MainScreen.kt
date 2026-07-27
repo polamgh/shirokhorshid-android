@@ -67,91 +67,97 @@ fun MainScreen(
     var showRegionPicker by remember { mutableStateOf(false) }
     var diagnosticsExpanded by remember { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.Background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 8.dp, bottom = 76.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(AppColors.Background),
+        contentAlignment = Alignment.TopCenter
     ) {
-        DashboardHeader(onSupportClick = onSupportClick)
-
-        Spacer(modifier = Modifier.height(6.dp))
-        IranFlagStripe(modifier = Modifier.padding(horizontal = 4.dp))
-        Spacer(modifier = Modifier.height(10.dp))
-
-        if (!errorMessage.isNullOrBlank() && connectionStatus != VpnConnectionStatus.CONNECTED) {
-            ErrorBanner(message = errorMessage, onRetry = onRetryClick)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        StatusHeroCard(
-            connectionStatus = connectionStatus,
-            statusMessage = statusMessage,
-            durationText = durationText,
-            connectedProtocol = connectedProtocol,
-            pingMs = pingMs,
-            onRefreshPing = onRefreshPing
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        if (showConduitCard) {
-            ConduitProgressCard(
-                currentLine = conduitStatusLine,
-                history = conduitStatusHistory
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-
-        ConnectPowerButton(
-            status = connectionStatus,
-            isEnabled = connectionStatus != VpnConnectionStatus.WAITING,
-            onClick = onToggleClick
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        LocationCard(
-            selectedRegionCode = selectedRegionCode,
-            connectedLocationLine = connectedLocationLine,
-            regionHintLine = regionHintLine,
-            publicIp = trafficStats.ipAddress,
-            onRegionClick = { showRegionPicker = true }
-        )
-
-        if (!proxyOnlyAddress.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            InfoBanner(
-                text = stringResource(R.string.azadi_proxy_only_card) + "\n" + proxyOnlyAddress,
-                tint = AppColors.GlowGreen
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-        TrafficSection(trafficStats = trafficStats)
-
-        if (connectionStatus == VpnConnectionStatus.CONNECTED ||
-            !diagnosticsSummary.isNullOrBlank() ||
-            !leakSummary.isNullOrBlank() ||
-            findBestRunning ||
-            !savedBestLabel.isNullOrBlank()
+        Column(
+            modifier = Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 76.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
-            DiagnosticsRow(
-                expanded = diagnosticsExpanded,
-                onToggle = { diagnosticsExpanded = !diagnosticsExpanded },
-                summary = diagnosticsSummary,
-                leak = leakSummary,
-                findBestRunning = findBestRunning,
-                findBestProgress = findBestProgress,
-                savedBestLabel = savedBestLabel,
-                onFindBestClick = onFindBestClick,
-                onConnectBestClick = onConnectBestClick,
-                onOpenLogs = onOpenLogs
+            DashboardHeader(onSupportClick = onSupportClick)
+
+            Spacer(modifier = Modifier.height(6.dp))
+            IranFlagStripe(modifier = Modifier.padding(horizontal = 4.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (!errorMessage.isNullOrBlank() && connectionStatus != VpnConnectionStatus.CONNECTED) {
+                ErrorBanner(message = errorMessage, onRetry = onRetryClick)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            StatusHeroCard(
+                connectionStatus = connectionStatus,
+                statusMessage = statusMessage,
+                durationText = durationText,
+                connectedProtocol = connectedProtocol,
+                pingMs = pingMs,
+                onRefreshPing = onRefreshPing
             )
+
+            if (showConduitCard) {
+                ConduitProgressCard(
+                    currentLine = conduitStatusLine,
+                    history = conduitStatusHistory
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            ConnectPowerButton(
+                status = connectionStatus,
+                isEnabled = connectionStatus != VpnConnectionStatus.WAITING,
+                onClick = onToggleClick
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            LocationCard(
+                selectedRegionCode = selectedRegionCode,
+                connectedLocationLine = connectedLocationLine,
+                regionHintLine = regionHintLine,
+                publicIp = trafficStats.ipAddress,
+                onRegionClick = { showRegionPicker = true }
+            )
+
+            if (!proxyOnlyAddress.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                InfoBanner(
+                    text = stringResource(R.string.azadi_proxy_only_card) + "\n" + proxyOnlyAddress,
+                    tint = AppColors.GlowGreen
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            TrafficSection(trafficStats = trafficStats)
+
+            if (!diagnosticsSummary.isNullOrBlank() ||
+                !leakSummary.isNullOrBlank() ||
+                !proxyOnlyAddress.isNullOrBlank() ||
+                findBestRunning ||
+                !findBestProgress.isNullOrBlank() ||
+                !savedBestLabel.isNullOrBlank()
+            ) {
+                Spacer(modifier = Modifier.height(8.dp))
+                DiagnosticsRow(
+                    expanded = diagnosticsExpanded,
+                    onToggle = { diagnosticsExpanded = !diagnosticsExpanded },
+                    summary = diagnosticsSummary,
+                    leak = leakSummary,
+                    findBestRunning = findBestRunning,
+                    findBestProgress = findBestProgress,
+                    savedBestLabel = savedBestLabel,
+                    onFindBestClick = onFindBestClick,
+                    onConnectBestClick = onConnectBestClick,
+                    onOpenLogs = onOpenLogs
+                )
+            }
         }
     }
 

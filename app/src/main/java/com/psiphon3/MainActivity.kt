@@ -7,8 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.nfc.NfcAdapter
-import android.nfc.cardemulation.CardEmulation
 import android.os.Build
 import android.os.Bundle
 import android.text.util.Linkify
@@ -342,11 +340,6 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                         lastSessionDownload = result.lastSessionDownload
                         lastSessionUpload = result.lastSessionUpload
                     }
-                }
-
-                LaunchedEffect(tunnelState, connectionUi.diagnosticsSummary) {
-                    val isConnectedNow = baseStatus == VpnConnectionStatus.CONNECTED
-                    updatePsiphonBumpHceState(isConnectedNow)
                 }
 
                 LaunchedEffect(connectionStatus) {
@@ -810,26 +803,9 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
             .show()
     }
 
-    private fun updatePsiphonBumpHceState(isConnected: Boolean) {
-        val nfcAdapter = NfcAdapter.getDefaultAdapter(this) ?: return
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP ||
-            !packageManager.hasSystemFeature(PackageManager.FEATURE_NFC_HOST_CARD_EMULATION)
-        ) return
-        val cardEmulation = CardEmulation.getInstance(nfcAdapter)
-        val component = ComponentName(this, PsiphonHostApduService::class.java)
-        if (isConnected) {
-            cardEmulation.registerAidsForService(component, CardEmulation.CATEGORY_OTHER, listOf("50736970686f6e4e6663"))
-        } else {
-            cardEmulation.removeAidsForService(component, CardEmulation.CATEGORY_OTHER)
-        }
-    }
-
     private fun checkPermissions() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val permissions = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PermissionChecker.PERMISSION_GRANTED
-        ) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PermissionChecker.PERMISSION_GRANTED) {
             permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         }

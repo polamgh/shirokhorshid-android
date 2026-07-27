@@ -21,9 +21,11 @@ package com.psiphon3.psiphonlibrary;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.DisplayMetrics;
@@ -42,6 +44,7 @@ import com.psiphon3.log.MyLog;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -145,21 +148,34 @@ class InstalledAppsMultiSelectListPreference extends AlertDialog.Builder impleme
                 VpnRulesHelper.readVpnRulesFromFile(context.getApplicationContext())
         );
         PackageManager pm = context.getPackageManager();
-
         List<AppEntry> apps = new ArrayList<>();
-        List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS);
 
-        for (PackageInfo p : packages) {
-            if (isInternetPermissionGranted(p)) {
-                // This takes a bit of time, but since we want the apps sorted by displayed name
-                // its best to do synchronously
+        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> launchables = pm.queryIntentActivities(mainIntent, 0);
+        Set<String> processedPackages = new HashSet<>();
+
+        for (ResolveInfo info : launchables) {
+            if (info.activityInfo == null) {
+                continue;
+            }
+            String packageId = info.activityInfo.packageName;
+            if (processedPackages.contains(packageId)) {
+                continue;
+            }
+            processedPackages.add(packageId);
+
+            PackageInfo p = null;
+            try {
+                p = pm.getPackageInfo(packageId, PackageManager.GET_PERMISSIONS);
+            } catch (PackageManager.NameNotFoundException ignored) {}
+
+            if (p != null && isInternetPermissionGranted(p)) {
                 String appName = p.applicationInfo.loadLabel(pm).toString();
-                String packageId = p.packageName;
                 Single<Drawable> iconLoader = getIconLoader(p.applicationInfo, pm);
                 int versionCode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ?
                         (int) p.getLongVersionCode() : p.versionCode;
 
-                // Check if this app should be excluded from UI display
                 if (shouldHideFromUI(context, packageId, versionCode)) {
                     continue;
                 }

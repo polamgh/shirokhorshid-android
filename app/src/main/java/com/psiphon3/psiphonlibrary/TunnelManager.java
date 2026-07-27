@@ -294,7 +294,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             m_parentService.startForeground(R.string.psiphon_service_notification_id,
                     createNotification(false, TunnelState.ConnectionData.NetworkConnectionState.CONNECTING),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED);
         } else {
             m_parentService.startForeground(R.string.psiphon_service_notification_id,
                     createNotification(false, TunnelState.ConnectionData.NetworkConnectionState.CONNECTING));

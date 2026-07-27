@@ -369,23 +369,6 @@ public class MainActivityOld extends LocalizedActivities.AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             List<String> permissionsToRequest = new ArrayList<>();
 
-            // Check if notification permission is granted on Android 13+ (API 33+)
-            if (Build.VERSION.SDK_INT >= 33) {
-                if (ContextCompat.checkSelfPermission(this,
-                        Manifest.permission.POST_NOTIFICATIONS) != PermissionChecker.PERMISSION_GRANTED) {
-                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS);
-                    // Check if we should show a rationale for notification permission
-                    if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
-                        // Start notification rationale activity and abort further permission checks and requests.
-                        // We will run permission check again when the rationale activity is finished.
-                        startActivityForResult(
-                                new Intent(this, NotificationPermissionRationaleActivity.class),
-                                REQUEST_CODE_NOTIFICATION_RATIONALE);
-                        return;
-                    }
-                }
-            }
-
             // Request permissions if needed
             if (permissionsToRequest.size() > 0) {
                 requestPermissions(permissionsToRequest.toArray(new String[0]), REQUEST_CODE_PERMISSIONS);
@@ -573,13 +556,8 @@ public class MainActivityOld extends LocalizedActivities.AppCompatActivity {
                         boolean waitingForNetwork =
                                 tunnelState.connectionData().networkConnectionState() ==
                                         TunnelState.ConnectionData.NetworkConnectionState.WAITING_FOR_NETWORK;
-                        helpConnectFab.setVisibility(waitingForNetwork ? View.INVISIBLE : View.VISIBLE);
-                        helpConnectFab.setOnClickListener(waitingForNetwork ? null : view -> {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                Intent intent = new Intent(this, PsiphonBumpNfcReaderActivity.class);
-                                startActivity(intent);
-                            }
-                        });
+                        helpConnectFab.setVisibility(View.GONE);
+                        helpConnectFab.setOnClickListener(null);
                     }
                     break;
                 case STOPPED:
@@ -594,32 +572,7 @@ public class MainActivityOld extends LocalizedActivities.AppCompatActivity {
     // Dynamically register and unregister "Psiphon Nfc" AID for NFC emulation
     // and update Psiphon Bump help UI
     private void updatePsiphonBumpHceState(boolean isConnected) {
-        NfcAdapter nfcAdapter = NfcAdapter.getDefaultAdapter(this);
-        PackageManager pm = getPackageManager();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
-                nfcAdapter != null &&
-                pm.hasSystemFeature(PackageManager.FEATURE_NFC_HOST_CARD_EMULATION)) {
-            CardEmulation cardEmulation = CardEmulation.getInstance(nfcAdapter);
-            if (isConnected) {
-                cardEmulation.registerAidsForService(new ComponentName(this, PsiphonHostApduService.class),
-                        CardEmulation.CATEGORY_OTHER,
-                        Collections.singletonList("50736970686f6e4e6663")); // "PsiphonNfc" hex-encoded
-                if (nfcAdapter.isEnabled()) {
-                    psiphonBumpHelpState = PsiphonBumpHelpState.ENABLED;
-                } else {
-                    psiphonBumpHelpState = PsiphonBumpHelpState.NEED_SYSTEM_NFC;
-                }
-            } else {
-                cardEmulation.removeAidsForService(new ComponentName(this, PsiphonHostApduService.class),
-                        CardEmulation.CATEGORY_OTHER);
-                psiphonBumpHelpState = PsiphonBumpHelpState.DISABLED;
-            }
-        } else {
-            psiphonBumpHelpState = PsiphonBumpHelpState.DISABLED;
-        }
-
-        // Update the UI
+        psiphonBumpHelpState = PsiphonBumpHelpState.DISABLED;
         updatePsiphonBumpHelpMenuItem(psiphonBumpHelpState);
     }
 

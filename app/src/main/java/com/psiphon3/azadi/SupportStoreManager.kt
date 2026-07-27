@@ -28,6 +28,18 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
         const val PRODUCT_SUPPORT_YEARLY = "support_yearly"
 
         private val CONSUMABLE_TIPS = setOf(PRODUCT_TIP_SMALL, PRODUCT_TIP_MEDIUM, PRODUCT_TIP_LARGE)
+
+        private fun logI(message: String) {
+            MyLog.i("Billing_Event", "message", message)
+        }
+
+        private fun logW(message: String) {
+            MyLog.w("Billing_Warning", "message", message)
+        }
+
+        private fun logE(message: String) {
+            MyLog.e("Billing_Error", "message", message)
+        }
     }
 
     private val billingClient = BillingClient.newBuilder(context)
@@ -60,13 +72,13 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
     }
 
     fun startConnection() {
-        MyLog.i("Billing", "==================================================")
-        MyLog.i("Billing", "SUPPORT STORE MANAGER: START CONNECTION")
-        MyLog.i("Billing", "Installed Package Name: ${context.packageName}")
-        MyLog.i("Billing", "App Version Name: ${BuildConfig.VERSION_NAME}")
-        MyLog.i("Billing", "App Version Code: ${BuildConfig.VERSION_CODE}")
-        MyLog.i("Billing", "BillingClient isReady: ${billingClient.isReady}")
-        MyLog.i("Billing", "==================================================")
+        logI("==================================================")
+        logI("SUPPORT STORE MANAGER: START CONNECTION")
+        logI("Installed Package Name: ${context.packageName}")
+        logI("App Version Name: ${BuildConfig.VERSION_NAME}")
+        logI("App Version Code: ${BuildConfig.VERSION_CODE}")
+        logI("BillingClient isReady: ${billingClient.isReady}")
+        logI("==================================================")
 
         if (billingClient.isReady) {
             queryProducts()
@@ -77,10 +89,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
         _isLoading.value = true
         billingClient.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
-                MyLog.i(
-                    "Billing",
-                    "BillingClient connection result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'"
-                )
+                logI("BillingClient connection result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     queryProducts()
                     queryPurchases()
@@ -91,14 +100,14 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             }
 
             override fun onBillingServiceDisconnected() {
-                MyLog.w("Billing", "BillingClient service disconnected")
+                logW("BillingClient service disconnected")
                 _isLoading.value = false
             }
         })
     }
 
     private fun queryProducts() {
-        MyLog.i("Billing", "--- Beginning Query for INAPP and SUBS Products Separately ---")
+        logI("--- Beginning Query for INAPP and SUBS Products Separately ---")
         _isLoading.value = true
 
         val inAppProductList = listOf(
@@ -130,7 +139,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             if (remainingQueries <= 0) {
                 _isLoading.value = false
                 _products.value = allReturnedProducts.toList()
-                MyLog.i("Billing", "--- Product Query Complete. Total returned products: ${allReturnedProducts.size} ---")
+                logI("--- Product Query Complete. Total returned products: ${allReturnedProducts.size} ---")
             }
         }
 
@@ -140,30 +149,21 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             .build()
 
         billingClient.queryProductDetailsAsync(inAppParams) { billingResult, productDetailsList ->
-            MyLog.i(
-                "Billing",
-                "INAPP Query Result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${productDetailsList.size}"
-            )
+            logI("INAPP Query Result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${productDetailsList.size}")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 val returnedIds = productDetailsList.map { it.productId }.toSet()
                 productDetailsList.forEach { details ->
-                    MyLog.i(
-                        "Billing",
-                        "  Returned INAPP Product: productId=${details.productId}, name='${details.name}', formattedPrice='${details.oneTimePurchaseOfferDetails?.formattedPrice}'"
-                    )
+                    logI("Returned INAPP Product: productId=${details.productId}, name='${details.name}', formattedPrice='${details.oneTimePurchaseOfferDetails?.formattedPrice}'")
                     allReturnedProducts.add(details)
                 }
 
                 // Check and print Unfetched INAPP Products
                 val requestedInAppIds = listOf(PRODUCT_TIP_SMALL, PRODUCT_TIP_MEDIUM, PRODUCT_TIP_LARGE)
                 requestedInAppIds.filter { it !in returnedIds }.forEach { unfetchedId ->
-                    MyLog.w(
-                        "Billing",
-                        "  Unfetched INAPP Product: productId=$unfetchedId, statusCode=${billingResult.responseCode}"
-                    )
+                    logW("Unfetched INAPP Product: productId=$unfetchedId, statusCode=${billingResult.responseCode}")
                 }
             } else {
-                MyLog.e("Billing", "Failed to query INAPP products: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
+                logE("Failed to query INAPP products: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
             }
             onQueryFinished()
         }
@@ -174,25 +174,19 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             .build()
 
         billingClient.queryProductDetailsAsync(subsParams) { billingResult, productDetailsList ->
-            MyLog.i(
-                "Billing",
-                "SUBS Query Result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${productDetailsList.size}"
-            )
+            logI("SUBS Query Result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${productDetailsList.size}")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 val returnedIds = productDetailsList.map { it.productId }.toSet()
                 productDetailsList.forEach { details ->
-                    MyLog.i("Billing", "  Returned SUBS Product: productId=${details.productId}, name='${details.name}'")
+                    logI("Returned SUBS Product: productId=${details.productId}, name='${details.name}'")
                     val offerDetailsList = details.subscriptionOfferDetails
                     if (!offerDetailsList.isNullOrEmpty()) {
                         offerDetailsList.forEachIndexed { idx, offer ->
                             val phase = offer.pricingPhases.pricingPhaseList.firstOrNull()
-                            MyLog.i(
-                                "Billing",
-                                "    SUBS Offer [$idx]: productId=${details.productId}, basePlanId='${offer.basePlanId}', offerId='${offer.offerId}', offerToken='${offer.offerToken}', formattedPrice='${phase?.formattedPrice}', billingPeriod='${phase?.billingPeriod}'"
-                            )
+                            logI("SUBS Offer [$idx]: productId=${details.productId}, basePlanId='${offer.basePlanId}', offerId='${offer.offerId}', offerToken='${offer.offerToken}', formattedPrice='${phase?.formattedPrice}', billingPeriod='${phase?.billingPeriod}'")
                         }
                     } else {
-                        MyLog.w("Billing", "    SUBS Product has NO subscriptionOfferDetails: productId=${details.productId}")
+                        logW("SUBS Product has NO subscriptionOfferDetails: productId=${details.productId}")
                     }
                     allReturnedProducts.add(details)
                 }
@@ -200,20 +194,17 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
                 // Check and print Unfetched SUBS Products
                 val requestedSubsIds = listOf(PRODUCT_SUPPORT_MONTHLY, PRODUCT_SUPPORT_YEARLY)
                 requestedSubsIds.filter { it !in returnedIds }.forEach { unfetchedId ->
-                    MyLog.w(
-                        "Billing",
-                        "  Unfetched SUBS Product: productId=$unfetchedId, statusCode=${billingResult.responseCode}"
-                    )
+                    logW("Unfetched SUBS Product: productId=$unfetchedId, statusCode=${billingResult.responseCode}")
                 }
             } else {
-                MyLog.e("Billing", "Failed to query SUBS products: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
+                logE("Failed to query SUBS products: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
             }
             onQueryFinished()
         }
     }
 
     fun purchase(activity: Activity, productDetails: ProductDetails) {
-        MyLog.i("Billing", "Purchase requested for productId=${productDetails.productId}, type=${productDetails.productType}")
+        logI("Purchase requested for productId=${productDetails.productId}, type=${productDetails.productType}")
         _uiState.value = BillingUiState.Loading
 
         val productDetailsParamsBuilder = BillingFlowParams.ProductDetailsParams.newBuilder()
@@ -221,10 +212,10 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
 
         if (productDetails.productType == BillingClient.ProductType.SUBS) {
             val offerToken = findBestOfferToken(productDetails)
-            MyLog.i("Billing", "Selected offerToken='$offerToken' for subscription '${productDetails.productId}'")
+            logI("Selected offerToken='$offerToken' for subscription '${productDetails.productId}'")
 
             if (offerToken == null) {
-                MyLog.e("Billing", "No valid offerToken found for subscription '${productDetails.productId}'")
+                logE("No valid offerToken found for subscription '${productDetails.productId}'")
                 _uiState.value = BillingUiState.Error("No valid offer token found for subscription '${productDetails.productId}'.")
                 return
             }
@@ -236,7 +227,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             .build()
 
         val result = billingClient.launchBillingFlow(activity, billingFlowParams)
-        MyLog.i("Billing", "launchBillingFlow result: responseCode=${result.responseCode}, debugMessage='${result.debugMessage}'")
+        logI("launchBillingFlow result: responseCode=${result.responseCode}, debugMessage='${result.debugMessage}'")
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
             _uiState.value = BillingUiState.Error("Failed to launch billing flow: [Code ${result.responseCode}] ${result.debugMessage}")
         }
@@ -245,37 +236,33 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
     private fun findBestOfferToken(productDetails: ProductDetails): String? {
         val offers = productDetails.subscriptionOfferDetails
         if (offers.isNullOrEmpty()) {
-            MyLog.w("Billing", "findBestOfferToken: subscriptionOfferDetails is null or empty for ${productDetails.productId}")
+            logW("findBestOfferToken: subscriptionOfferDetails is null or empty for ${productDetails.productId}")
             return null
         }
-        // Do not require offerId; do not filter support_yearly by basePlanId "yearly". Select the active eligible offer returned by Google Play.
         val offer = offers.firstOrNull { it.offerTags.isNotEmpty() } ?: offers.firstOrNull()
-        MyLog.i(
-            "Billing",
-            "findBestOfferToken: selected offer (basePlanId='${offer?.basePlanId}', offerId='${offer?.offerId}', offerToken='${offer?.offerToken}') for ${productDetails.productId}"
-        )
+        logI("findBestOfferToken: selected offer (basePlanId='${offer?.basePlanId}', offerId='${offer?.offerId}', offerToken='${offer?.offerToken}') for ${productDetails.productId}")
         return offer?.offerToken
     }
 
     override fun onPurchasesUpdated(billingResult: BillingResult, purchases: List<Purchase>?) {
-        MyLog.i("Billing", "onPurchasesUpdated: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${purchases?.size ?: 0}")
+        logI("onPurchasesUpdated: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${purchases?.size ?: 0}")
         when (billingResult.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
                 purchases?.forEach { handlePurchase(it) }
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
-                MyLog.i("Billing", "User canceled purchase flow")
+                logI("User canceled purchase flow")
                 _uiState.value = BillingUiState.Error("Purchase canceled", isUserCanceled = true)
             }
             else -> {
-                MyLog.e("Billing", "Purchase failed: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
+                logE("Purchase failed: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
                 _uiState.value = BillingUiState.Error("Purchase failed: ${billingResult.debugMessage}")
             }
         }
     }
 
     private fun handlePurchase(purchase: Purchase) {
-        MyLog.i("Billing", "Handling purchase: orderId=${purchase.orderId}, products=${purchase.products}, purchaseState=${purchase.purchaseState}, acknowledged=${purchase.isAcknowledged}")
+        logI("Handling purchase: orderId=${purchase.orderId}, products=${purchase.products}, purchaseState=${purchase.purchaseState}, acknowledged=${purchase.isAcknowledged}")
         when (purchase.purchaseState) {
             Purchase.PurchaseState.PURCHASED -> {
                 val productId = purchase.products.firstOrNull() ?: return
@@ -296,15 +283,15 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
     }
 
     private fun consumePurchase(purchase: Purchase) {
-        MyLog.i("Billing", "Consuming purchase token for orderId=${purchase.orderId}")
+        logI("Consuming purchase token for orderId=${purchase.orderId}")
         val consumeParams = ConsumeParams.newBuilder()
             .setPurchaseToken(purchase.purchaseToken)
             .build()
 
         billingClient.consumeAsync(consumeParams) { billingResult, _ ->
-            MyLog.i("Billing", "consumeAsync result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
+            logI("consumeAsync result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                MyLog.i("Billing", "Tip consumed successfully")
+                logI("Tip consumed successfully")
                 _uiState.value = BillingUiState.Success
             } else {
                 _uiState.value = BillingUiState.Error("Failed to finalize tip: ${billingResult.debugMessage}")
@@ -314,21 +301,21 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
 
     private fun acknowledgePurchase(purchase: Purchase) {
         if (purchase.isAcknowledged) {
-            MyLog.i("Billing", "Purchase already acknowledged")
+            logI("Purchase already acknowledged")
             _uiState.value = BillingUiState.Success
             queryPurchases()
             return
         }
 
-        MyLog.i("Billing", "Acknowledging purchase for orderId=${purchase.orderId}")
+        logI("Acknowledging purchase for orderId=${purchase.orderId}")
         val acknowledgeParams = AcknowledgePurchaseParams.newBuilder()
             .setPurchaseToken(purchase.purchaseToken)
             .build()
 
         billingClient.acknowledgePurchase(acknowledgeParams) { billingResult ->
-            MyLog.i("Billing", "acknowledgePurchase result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
+            logI("acknowledgePurchase result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                MyLog.i("Billing", "Subscription acknowledged successfully")
+                logI("Subscription acknowledged successfully")
                 _uiState.value = BillingUiState.Success
                 queryPurchases()
             } else {
@@ -338,16 +325,16 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
     }
 
     fun queryPurchases() {
-        MyLog.i("Billing", "Querying existing purchases...")
+        logI("Querying existing purchases...")
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build()
         ) { billingResult, purchases ->
-            MyLog.i("Billing", "queryPurchases result: responseCode=${billingResult.responseCode}, count=${purchases.size}")
+            logI("queryPurchases result: responseCode=${billingResult.responseCode}, count=${purchases.size}")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 val isSubscribed = purchases.any {
                     it.purchaseState == Purchase.PurchaseState.PURCHASED && it.isAcknowledged
                 }
-                MyLog.i("Billing", "User active subscription status: isSubscribed=$isSubscribed")
+                logI("User active subscription status: isSubscribed=$isSubscribed")
                 _purchaseState.value = if (isSubscribed) PurchaseState.SUBSCRIBED else PurchaseState.NOT_PURCHASED
             }
         }
