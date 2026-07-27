@@ -10,20 +10,29 @@ import java.net.NetworkInterface
 object NetworkUtils {
     fun isOnWifi(context: Context): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        try {
+            return cm.allNetworks.any { network ->
+                cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+        } catch (_: Exception) {
+            return false
+        }
     }
 
     fun wifiIpv4Address(context: Context): String? {
-        if (!isOnWifi(context)) return null
-        return try {
-            NetworkInterface.getNetworkInterfaces()?.toList()?.flatMap { it.inetAddresses.toList() }
-                ?.filterIsInstance<Inet4Address>()
-                ?.firstOrNull { !it.isLoopbackAddress && !it.isLinkLocalAddress }
-                ?.hostAddress
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
+        try {
+            val wifiNetwork = cm.allNetworks.firstOrNull { network ->
+                cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            } ?: return null
+
+            val linkProperties = cm.getLinkProperties(wifiNetwork)
+            return linkProperties?.linkAddresses?.firstOrNull { 
+                val addr = it.address
+                addr is Inet4Address && !addr.isLoopbackAddress && !addr.isLinkLocalAddress
+            }?.address?.hostAddress
         } catch (_: Exception) {
-            null
+            return null
         }
     }
 

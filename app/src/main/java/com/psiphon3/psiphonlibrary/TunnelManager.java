@@ -167,6 +167,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
         int shareProxyOnNetworkHttpPort = 0;
         String shareProxyOnNetworkUsername = "";
         String shareProxyOnNetworkPassword = "";
+        boolean shareProxyOnNetworkAuthEnabled = false;
         boolean proxyOnlyMode = false;
         boolean bypassIranIPsEnabled = false;
         String bypassCustomRoutes = "";
@@ -226,6 +227,7 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
     private CountDownLatch m_tunnelThreadStopSignal;
     private Thread m_tunnelThread;
     private final AtomicBoolean m_isStopping;
+    private final AtomicBoolean m_isSoftRestarting = new AtomicBoolean(false);
     private PsiphonTunnel m_tunnel;
     private VpnManager m_vpnManager = VpnManager.getInstance();
     private String m_lastUpstreamProxyErrorMessage;
@@ -406,6 +408,10 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                 })
                 .distinctUntilChanged()
                 .doOnNext(networkConnectionState -> {
+                    if (m_isSoftRestarting.get() &&
+                            networkConnectionState != TunnelState.ConnectionData.NetworkConnectionState.CONNECTED) {
+                        return;
+                    }
                     m_tunnelState.networkConnectionState = networkConnectionState;
                     sendClientMessage(ServiceToClientMessage.TUNNEL_CONNECTION_STATE.ordinal(), getTunnelStateBundle());
                     // Don't update notification to CONNECTING, etc., when a stop was commanded.
@@ -649,6 +655,9 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                     multiProcessPreferences.getString(
                             getContext().getString(R.string.shareProxyOnNetworkPasswordPreference),
                             ""));
+            tunnelConfig.shareProxyOnNetworkAuthEnabled = multiProcessPreferences
+                    .getBoolean(getContext().getString(R.string.shareProxyOnNetworkAuthEnabledPreference),
+                            false);
             tunnelConfig.proxyOnlyMode = multiProcessPreferences
                     .getBoolean(getContext().getString(R.string.proxyOnlyModePreference), false);
             tunnelConfig.bypassIranIPsEnabled = multiProcessPreferences
@@ -906,14 +915,20 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
                             return;
                         }
 
-                        // TODO: notify client that the tunnel is going to restart
-                        //  rather than reporting tunnel is not connected?
-                        manager.m_networkConnectionStatePublishRelay.accept(TunnelState.ConnectionData.NetworkConnectionState.CONNECTING);
                         manager.m_compositeDisposable.add(
                                 manager.getTunnelConfigSingle()
                                         .doOnSuccess(config -> {
-                                            manager.m_vpnManager.stopRouteThroughTunnel();
-                                            manager.m_isRoutingThroughTunnelPublishRelay.accept(Boolean.FALSE);
+                                            boolean portChanged = manager.m_tunnelConfig != null &&
+                                                    (manager.m_tunnelConfig.shareProxyOnNetworkSocksPort != config.shareProxyOnNetworkSocksPort ||
+                                                     manager.m_tunnelConfig.shareProxyOnNetworkHttpPort != config.shareProxyOnNetworkHttpPort ||
+                                                     manager.m_tunnelConfig.proxyOnlyMode != config.proxyOnlyMode);
+
+                                            if (portChanged) {
+                                                manager.m_networkConnectionStatePublishRelay.accept(TunnelState.ConnectionData.NetworkConnectionState.CONNECTING);
+                                                manager.m_vpnManager.stopRouteThroughTunnel();
+                                                manager.m_isRoutingThroughTunnelPublishRelay.accept(Boolean.FALSE);
+                                            }
+                                            
                                             manager.setTunnelConfig(config);
                                             manager.onRestartTunnel();
                                         })

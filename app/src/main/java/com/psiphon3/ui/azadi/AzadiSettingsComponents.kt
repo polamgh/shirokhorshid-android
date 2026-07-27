@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +19,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import com.psiphon3.R
 import com.psiphon3.ui.GlassCard
 import com.psiphon3.ui.theme.AppColors
 
@@ -222,6 +228,39 @@ fun AzadiOptionRow(
 }
 
 @Composable
+fun AzadiDisclosureGroup(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Icon(
+                imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = AppColors.SubtitleText
+            )
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
 fun AzadiFooterNote(text: String) {
     Text(
         text = text,
@@ -240,4 +279,10 @@ fun AzadiWarningBlock(text: String) {
         lineHeight = 18.sp,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
     )
+}
+
+fun copyText(context: Context, label: String, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+    Toast.makeText(context, R.string.azadi_copied, Toast.LENGTH_SHORT).show()
 }

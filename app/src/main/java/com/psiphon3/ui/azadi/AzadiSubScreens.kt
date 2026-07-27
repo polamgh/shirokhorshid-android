@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -26,6 +27,7 @@ import com.psiphon3.BuildConfig
 import com.psiphon3.R
 import com.psiphon3.azadi.AzadiEventLogger
 import com.psiphon3.azadi.AzadiSettings
+import com.psiphon3.azadi.ReconnectMode
 import com.psiphon3.azadi.BypassDomainResolver
 import com.psiphon3.azadi.IranBypassListService
 import com.psiphon3.azadi.LanProxyRuntimeStatus
@@ -75,7 +77,7 @@ fun AzadiSubScreenScaffold(
 @Composable
 fun UpstreamProxyScreen(
     settings: AzadiSettings,
-    onUpdate: (AzadiSettings) -> Unit,
+    onUpdate: (AzadiSettings, ReconnectMode) -> Unit,
     onBack: () -> Unit
 ) {
     var host by remember(settings.upstreamProxyHost) { mutableStateOf(settings.upstreamProxyHost) }
@@ -88,7 +90,7 @@ fun UpstreamProxyScreen(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_upstream_use_system),
                 checked = settings.upstreamProxyUseSystem,
-                onCheckedChange = { onUpdate(settings.copy(upstreamProxyUseSystem = it, upstreamProxyEnabled = true)) }
+                onCheckedChange = { onUpdate(settings.copy(upstreamProxyUseSystem = it, upstreamProxyEnabled = true), ReconnectMode.SOFT) }
             )
         }
         if (!settings.upstreamProxyUseSystem) {
@@ -131,7 +133,7 @@ fun UpstreamProxyScreen(
                             upstreamProxyPort = port.toIntOrNull() ?: 8080,
                             upstreamProxyUsername = user,
                             upstreamProxyPassword = pass
-                        ))
+                        ), ReconnectMode.SOFT)
                     },
                     modifier = Modifier.padding(8.dp)
                 ) { Text(stringResource(R.string.azadi_save_proxy)) }
@@ -143,7 +145,7 @@ fun UpstreamProxyScreen(
 @Composable
 fun BypassIranScreen(
     settings: AzadiSettings,
-    onUpdate: (AzadiSettings) -> Unit,
+    onUpdate: (AzadiSettings, ReconnectMode) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -157,7 +159,7 @@ fun BypassIranScreen(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_bypass_iran_ips),
                 checked = settings.bypassIranIPsEnabled,
-                onCheckedChange = { onUpdate(settings.copy(bypassIranIPsEnabled = it)) },
+                onCheckedChange = { onUpdate(settings.copy(bypassIranIPsEnabled = it), ReconnectMode.SOFT) },
                 subtitle = stringResource(R.string.azadi_bypass_iran_subtitle),
                 testTag = "bypassIranToggle"
             )
@@ -170,7 +172,7 @@ fun BypassIranScreen(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_bypass_strict),
                 checked = settings.bypassStrictModeEnabled,
-                onCheckedChange = { onUpdate(settings.copy(bypassStrictModeEnabled = it)) },
+                onCheckedChange = { onUpdate(settings.copy(bypassStrictModeEnabled = it), ReconnectMode.SOFT) },
                 warning = stringResource(R.string.azadi_bypass_strict_warning),
                 testTag = "bypassStrictToggle"
             )
@@ -185,7 +187,7 @@ fun BypassIranScreen(
                 minLines = 3
             )
             TextButton(
-                onClick = { onUpdate(settings.copy(bypassCustomRoutes = customRoutes)) },
+                onClick = { onUpdate(settings.copy(bypassCustomRoutes = customRoutes), ReconnectMode.SOFT) },
                 modifier = Modifier.testTag("bypassSaveButton")
             ) {
                 Text(stringResource(R.string.azadi_apply_routes))
@@ -200,7 +202,7 @@ fun BypassIranScreen(
                 modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("bypassDomainEditor"),
                 minLines = 2
             )
-            TextButton(onClick = { onUpdate(settings.copy(bypassDomains = domains)) }) {
+            TextButton(onClick = { onUpdate(settings.copy(bypassDomains = domains), ReconnectMode.SOFT) }) {
                 Text(stringResource(R.string.azadi_apply_routes))
             }
             TextButton(
@@ -246,7 +248,7 @@ fun BypassIranScreen(
 fun SecureDnsScreen(
     settings: AzadiSettings,
     vpnConnected: Boolean,
-    onUpdate: (AzadiSettings) -> Unit,
+    onUpdate: (AzadiSettings, ReconnectMode) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -282,7 +284,7 @@ fun SecureDnsScreen(
                     title = labels.first,
                     subtitle = labels.second,
                     selected = settings.secureDNSMode == mode,
-                    onClick = { onUpdate(settings.copy(secureDNSMode = mode)) },
+                    onClick = { onUpdate(settings.copy(secureDNSMode = mode), ReconnectMode.HARD) },
                     testTag = if (index == 0) "secureDnsModePicker" else null
                 )
             }
@@ -310,7 +312,7 @@ fun SecureDnsScreen(
                     AzadiOptionRow(
                         title = label,
                         selected = settings.secureDNSProvider == provider,
-                        onClick = { onUpdate(settings.copy(secureDNSProvider = provider)) },
+                        onClick = { onUpdate(settings.copy(secureDNSProvider = provider), ReconnectMode.HARD) },
                         testTag = if (index == 0) "secureDnsProviderPicker" else null
                     )
                 }
@@ -322,7 +324,7 @@ fun SecureDnsScreen(
                     if (settings.secureDNSMode == "doh") {
                         OutlinedTextField(
                             value = settings.customDoHURL,
-                            onValueChange = { onUpdate(settings.copy(customDoHURL = it)) },
+                            onValueChange = { onUpdate(settings.copy(customDoHURL = it), ReconnectMode.HARD) },
                             label = { Text(stringResource(R.string.azadi_custom_doh_url)) },
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             singleLine = true
@@ -331,7 +333,7 @@ fun SecureDnsScreen(
                     if (settings.secureDNSMode == "dot") {
                         OutlinedTextField(
                             value = settings.customDoTHost,
-                            onValueChange = { onUpdate(settings.copy(customDoTHost = it)) },
+                            onValueChange = { onUpdate(settings.copy(customDoTHost = it), ReconnectMode.HARD) },
                             label = { Text(stringResource(R.string.azadi_custom_dot_host)) },
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             singleLine = true
@@ -345,7 +347,7 @@ fun SecureDnsScreen(
                 AzadiToggleRow(
                     label = stringResource(R.string.azadi_block_cleartext_dns),
                     checked = settings.blockCleartextDNS,
-                    onCheckedChange = { onUpdate(settings.copy(blockCleartextDNS = it)) },
+                    onCheckedChange = { onUpdate(settings.copy(blockCleartextDNS = it), ReconnectMode.HARD) },
                     subtitle = stringResource(R.string.azadi_block_cleartext_dns_hint),
                     testTag = "secureDnsBlockCleartextToggle"
                 )
@@ -409,7 +411,7 @@ fun SecureDnsScreen(
 fun ProxyOnlyScreen(
     settings: AzadiSettings,
     vpnConnected: Boolean,
-    onUpdate: (AzadiSettings) -> Unit,
+    onUpdate: (AzadiSettings, ReconnectMode) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -429,7 +431,7 @@ fun ProxyOnlyScreen(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_proxy_only_mode_title),
                 checked = settings.proxyOnlyModeEnabled,
-                onCheckedChange = { onUpdate(settings.copy(proxyOnlyModeEnabled = it)) },
+                onCheckedChange = { onUpdate(settings.copy(proxyOnlyModeEnabled = it), ReconnectMode.SOFT) },
                 subtitle = stringResource(R.string.azadi_proxy_only_subtitle),
                 warning = stringResource(R.string.azadi_proxy_only_warning),
                 testTag = "proxyOnlyToggle"
@@ -441,7 +443,12 @@ fun ProxyOnlyScreen(
         }
         AzadiSectionHeader(stringResource(R.string.azadi_same_device_wifi))
         AzadiSettingsGroup {
-            AzadiWarningBlock(stringResource(R.string.azadi_proxy_only_wifi_warning))
+            Text(
+                stringResource(R.string.azadi_proxy_only_wifi_warning),
+                color = AzadiWarningOrange,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+            )
             AzadiDivider()
             AzadiCopyRow(
                 label = stringResource(R.string.azadi_http_proxy),
@@ -455,6 +462,10 @@ fun ProxyOnlyScreen(
                 onCopy = { if (socksAddr != "—") copyText(context, "SOCKS", socksAddr) }
             )
         }
+        if (wifiIp == "—") {
+            AzadiFooterNote(stringResource(R.string.share_proxy_no_wifi_hint))
+        }
+        Spacer(Modifier.height(12.dp))
         Button(
             onClick = {
                 scope.launch {
@@ -466,7 +477,7 @@ fun ProxyOnlyScreen(
                     ).show()
                 }
             },
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).testTag("proxyOnlySocksSelfTestButton"),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("proxyOnlySocksSelfTestButton"),
             enabled = vpnConnected
         ) { Text(stringResource(R.string.azadi_proxy_self_test)) }
     }
@@ -476,100 +487,220 @@ fun ProxyOnlyScreen(
 fun ShareProxyScreen(
     settings: AzadiSettings,
     vpnConnected: Boolean,
-    onUpdate: (AzadiSettings) -> Unit,
+    onUpdate: (AzadiSettings, ReconnectMode) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val wifiIp = remember { NetworkUtils.wifiIpv4Address(context) ?: "—" }
-    var httpPort by remember(settings.lanHttpProxyPort) { mutableStateOf(settings.lanHttpProxyPort.toString()) }
-    var socksPort by remember(settings.lanSocksProxyPort) { mutableStateOf(settings.lanSocksProxyPort.toString()) }
+    var wifiIp by remember { mutableStateOf(NetworkUtils.wifiIpv4Address(context) ?: "—") }
+    var httpPortText by remember(settings.lanHttpProxyPort) { mutableStateOf(settings.lanHttpProxyPort.toString()) }
+    var socksPortText by remember(settings.lanSocksProxyPort) { mutableStateOf(settings.lanSocksProxyPort.toString()) }
+    var portValidationError by remember { mutableStateOf<String?>(null) }
+    
     val lanState by LanProxyRuntimeStore.state.collectAsState()
+    
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(1500)
+            wifiIp = NetworkUtils.wifiIpv4Address(context) ?: "—"
+            kotlinx.coroutines.delay(2000)
         }
     }
-    val status = when (lanState.status) {
-        LanProxyRuntimeStatus.RUNNING -> stringResource(R.string.azadi_lan_proxy_running)
-        LanProxyRuntimeStatus.NO_WIFI_IP -> stringResource(R.string.azadi_proxy_only_wifi_required)
+    
+    val statusText = when (lanState.status) {
+        LanProxyRuntimeStatus.RUNNING -> stringResource(R.string.share_proxy_status_running)
+        LanProxyRuntimeStatus.NO_WIFI_IP -> stringResource(R.string.share_proxy_status_no_wifi)
         LanProxyRuntimeStatus.VPN_DISCONNECTED -> stringResource(R.string.azadi_vpn_disconnected)
-        LanProxyRuntimeStatus.PORT_IN_USE -> stringResource(R.string.azadi_lan_proxy_port_in_use)
+        LanProxyRuntimeStatus.PORT_IN_USE -> stringResource(R.string.share_proxy_status_port_in_use)
         LanProxyRuntimeStatus.FAILED_TO_START -> stringResource(R.string.azadi_lan_proxy_failed)
-        LanProxyRuntimeStatus.STOPPED -> if (vpnConnected) stringResource(R.string.azadi_lan_proxy_stopped) else stringResource(R.string.azadi_vpn_disconnected)
+        LanProxyRuntimeStatus.STOPPED -> if (vpnConnected && settings.shareProxyOnLocalNetworkEnabled) 
+            stringResource(R.string.share_proxy_status_running) 
+            else stringResource(R.string.share_proxy_status_stopped)
     }
-    val displayHost = lanState.boundHost.ifBlank { wifiIp }
+    
+    val statusColor = when (lanState.status) {
+        LanProxyRuntimeStatus.RUNNING -> AppColors.ConnectedGreen
+        LanProxyRuntimeStatus.STOPPED, LanProxyRuntimeStatus.VPN_DISCONNECTED -> AppColors.SubtitleText
+        else -> AzadiDestructiveRed
+    }
+
+    val displayHost = lanState.boundHost.ifBlank { if (wifiIp != "—") wifiIp else "" }
     val displayHttpPort = if (lanState.httpPort > 0) lanState.httpPort else settings.lanHttpProxyPort
     val displaySocksPort = if (lanState.socksPort > 0) lanState.socksPort else settings.lanSocksProxyPort
+    val isProxyReachable = (lanState.status == LanProxyRuntimeStatus.RUNNING || 
+            (lanState.status == LanProxyRuntimeStatus.STOPPED && settings.shareProxyOnLocalNetworkEnabled)) && 
+            displayHost.isNotBlank()
 
     AzadiSubScreenScaffold(title = stringResource(R.string.azadi_share_proxy_title), onBack = onBack) {
+        // 1. Toggle Section
         AzadiSettingsGroup {
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_lan_proxy_enable),
                 checked = settings.shareProxyOnLocalNetworkEnabled,
-                onCheckedChange = { onUpdate(settings.copy(shareProxyOnLocalNetworkEnabled = it)) },
-                subtitle = stringResource(R.string.azadi_lan_proxy_subtitle),
-                warning = stringResource(R.string.azadi_lan_proxy_warning),
+                onCheckedChange = { onUpdate(settings.copy(shareProxyOnLocalNetworkEnabled = it), ReconnectMode.SOFT) },
                 testTag = "shareProxyToggle"
             )
+            AzadiFooterNote(stringResource(R.string.azadi_lan_proxy_subtitle))
+            Text(
+                stringResource(R.string.azadi_lan_proxy_warning),
+                color = AzadiWarningOrange,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
-        AzadiSectionHeader(stringResource(R.string.dashboard_status))
+
+        // 2. Status Section
+        AzadiSectionHeader(stringResource(R.string.share_proxy_status_section))
         AzadiSettingsGroup {
-            AzadiValueRow(label = stringResource(R.string.dashboard_status), value = status)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(stringResource(R.string.dashboard_status), color = Color.White, fontSize = 16.sp)
+                Text(statusText, color = statusColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
             AzadiDivider()
             AzadiValueRow(
                 label = stringResource(R.string.azadi_wifi_ip),
-                value = wifiIp,
+                value = if (wifiIp != "—") wifiIp else stringResource(R.string.share_proxy_no_wifi_ip),
                 modifier = Modifier.testTag("wifiIPValue")
             )
-        }
-        AzadiSectionHeader(stringResource(R.string.azadi_proxy_addresses))
-        AzadiSettingsGroup {
-            if (displayHost != "—") {
-                AzadiCopyRow(
-                    label = stringResource(R.string.azadi_http_proxy),
-                    value = "$displayHost:$displayHttpPort",
-                    onCopy = { copyText(context, "HTTP", "$displayHost:$displayHttpPort") }
-                )
-                AzadiDivider()
-                AzadiCopyRow(
-                    label = stringResource(R.string.azadi_socks_proxy),
-                    value = "$displayHost:$displaySocksPort",
-                    onCopy = { copyText(context, "SOCKS", "$displayHost:$displaySocksPort") }
-                )
-            } else {
-                AzadiFooterNote(stringResource(R.string.azadi_proxy_only_wifi_required))
+            if (wifiIp == "—") {
+                AzadiFooterNote(stringResource(R.string.share_proxy_no_wifi_hint))
             }
         }
+
+        // 3. Proxy Address Section
+        AzadiSectionHeader(stringResource(R.string.azadi_proxy_addresses))
+        AzadiSettingsGroup {
+            val httpAddr = if (displayHost.isNotBlank()) "$displayHost:$displayHttpPort" else "—"
+            val socksAddr = if (displayHost.isNotBlank()) "$displayHost:$displaySocksPort" else "—"
+            
+            AzadiCopyRow(
+                label = stringResource(R.string.share_proxy_how_to_iphone), // Using iOS-like labels
+                value = httpAddr,
+                onCopy = { if (isProxyReachable) copyText(context, "HTTP", httpAddr) }
+            )
+            AzadiDivider()
+            AzadiCopyRow(
+                label = stringResource(R.string.azadi_socks_proxy),
+                value = socksAddr,
+                onCopy = { if (isProxyReachable) copyText(context, "SOCKS", socksAddr) }
+            )
+        }
+
+        // 4. Port Settings Section
         AzadiSectionHeader(stringResource(R.string.azadi_port_settings))
         AzadiSettingsGroup {
             OutlinedTextField(
-                value = httpPort,
-                onValueChange = { httpPort = it.filter { c -> c.isDigit() } },
+                value = httpPortText,
+                onValueChange = { httpPortText = it.filter { c -> c.isDigit() } },
                 label = { Text(stringResource(R.string.azadi_http_port)) },
                 modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("lanHttpPortField"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             OutlinedTextField(
-                value = socksPort,
-                onValueChange = { socksPort = it.filter { c -> c.isDigit() } },
+                value = socksPortText,
+                onValueChange = { socksPortText = it.filter { c -> c.isDigit() } },
                 label = { Text(stringResource(R.string.azadi_socks_port)) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("lanSocksPortField"),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("lanSocksPortField"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
+            if (portValidationError != null) {
+                Text(
+                    portValidationError!!,
+                    color = AzadiDestructiveRed,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
             TextButton(
                 onClick = {
-                    onUpdate(settings.copy(
-                        lanHttpProxyPort = httpPort.toIntOrNull() ?: 8087,
-                        lanSocksProxyPort = socksPort.toIntOrNull() ?: 1088
-                    ))
+                    val hp = httpPortText.toIntOrNull()
+                    val sp = socksPortText.toIntOrNull()
+                    if (hp == null || sp == null || hp !in 1024..65535 || sp !in 1024..65535) {
+                        portValidationError = context.getString(R.string.share_proxy_port_out_of_range)
+                        return@TextButton
+                    }
+                    if (hp == sp) {
+                        portValidationError = context.getString(R.string.share_proxy_ports_must_differ)
+                        return@TextButton
+                    }
+                    portValidationError = null
+                    onUpdate(settings.copy(lanHttpProxyPort = hp, lanSocksProxyPort = sp), ReconnectMode.SOFT)
+                    android.widget.Toast.makeText(context, R.string.share_proxy_ports_saved, android.widget.Toast.LENGTH_SHORT).show()
                 },
-                modifier = Modifier.testTag("savePortsButton")
+                modifier = Modifier.padding(8.dp).testTag("savePortsButton")
             ) { Text(stringResource(R.string.azadi_save_ports)) }
+            AzadiFooterNote(stringResource(R.string.share_proxy_port_hint))
         }
-        AzadiSectionHeader(stringResource(R.string.azadi_setup_instructions))
+
+        // 5. Authentication Section
+        AzadiSectionHeader(stringResource(R.string.share_proxy_auth_section))
         AzadiSettingsGroup {
-            AzadiFooterNote(stringResource(R.string.azadi_lan_setup_hint))
+            AzadiToggleRow(
+                label = stringResource(R.string.share_proxy_auth_toggle),
+                checked = settings.lanProxyAuthEnabled,
+                onCheckedChange = { },
+                modifier = Modifier.alpha(0.5f) // Disabled like iOS
+            )
+            if (settings.lanProxyAuthEnabled) {
+                OutlinedTextField(
+                    value = settings.lanProxyUsername,
+                    onValueChange = { onUpdate(settings.copy(lanProxyUsername = it), ReconnectMode.SOFT) },
+                    label = { Text(stringResource(R.string.azadi_proxy_username)) },
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+                OutlinedTextField(
+                    value = settings.lanProxyPassword,
+                    onValueChange = { onUpdate(settings.copy(lanProxyPassword = it), ReconnectMode.SOFT) },
+                    label = { Text(stringResource(R.string.azadi_proxy_password)) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            Text(
+                stringResource(R.string.share_proxy_no_auth_warning),
+                color = AzadiWarningOrange,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+            )
         }
+
+        // 6. Instructions Section
+        AzadiSectionHeader(stringResource(R.string.share_proxy_how_to_connect_title))
+        AzadiSettingsGroup {
+            AzadiDisclosureGroup(title = stringResource(R.string.share_proxy_how_to_iphone)) {
+                Text(stringResource(R.string.share_proxy_instructions_iphone), color = AppColors.SubtitleText, fontSize = 13.sp, lineHeight = 18.sp)
+            }
+            AzadiDivider()
+            AzadiDisclosureGroup(title = stringResource(R.string.share_proxy_how_to_android)) {
+                Text(stringResource(R.string.share_proxy_instructions_android), color = AppColors.SubtitleText, fontSize = 13.sp, lineHeight = 18.sp)
+            }
+            AzadiDivider()
+            AzadiDisclosureGroup(title = stringResource(R.string.share_proxy_how_to_windows)) {
+                Text(stringResource(R.string.share_proxy_instructions_windows), color = AppColors.SubtitleText, fontSize = 13.sp, lineHeight = 18.sp)
+            }
+            AzadiDivider()
+            AzadiDisclosureGroup(title = stringResource(R.string.share_proxy_how_to_android_tv)) {
+                Text(stringResource(R.string.share_proxy_instructions_android_tv), color = AppColors.SubtitleText, fontSize = 13.sp, lineHeight = 18.sp)
+            }
+            AzadiDivider()
+            AzadiDisclosureGroup(title = stringResource(R.string.share_proxy_socks_note_title)) {
+                Text(stringResource(R.string.share_proxy_socks_note_body), color = AppColors.SubtitleText, fontSize = 13.sp, lineHeight = 18.sp)
+            }
+        }
+
+        // 7. Security Section
+        AzadiSectionHeader(stringResource(R.string.share_proxy_security_section))
+        AzadiSettingsGroup {
+            Text(
+                stringResource(R.string.share_proxy_security_warning_ios),
+                color = AzadiDestructiveRed,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        
+        Spacer(Modifier.height(40.dp))
     }
 }
 

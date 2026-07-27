@@ -80,6 +80,9 @@ class AzadiSettingsStore(context: Context) {
         shareProxyOnLocalNetworkEnabled = prefs.getBoolean(key(R.string.shareProxyOnNetworkPreference), false),
         lanHttpProxyPort = prefs.getString(key(R.string.shareProxyOnNetworkHttpPortPreference), "").orEmpty().toIntOrNull() ?: 8087,
         lanSocksProxyPort = prefs.getString(key(R.string.shareProxyOnNetworkSocksPortPreference), "").orEmpty().toIntOrNull() ?: 1088,
+        lanProxyAuthEnabled = prefs.getBoolean(key(R.string.shareProxyOnNetworkAuthEnabledPreference), false),
+        lanProxyUsername = prefs.getString(key(R.string.shareProxyOnNetworkUsernamePreference), "").orEmpty(),
+        lanProxyPassword = prefs.getString(key(R.string.shareProxyOnNetworkPasswordPreference), "").orEmpty(),
         bypassIranIPsEnabled = prefs.getBoolean(key(R.string.bypassIranIPsPreference), false),
         bypassCustomRoutes = prefs.getString(key(R.string.bypassCustomRoutesPreference), "").orEmpty(),
         bypassDomains = prefs.getString(key(R.string.bypassDomainsPreference), "").orEmpty(),
@@ -136,6 +139,9 @@ class AzadiSettingsStore(context: Context) {
         prefs.put(key(R.string.shareProxyOnNetworkPreference), settings.shareProxyOnLocalNetworkEnabled)
         prefs.put(key(R.string.shareProxyOnNetworkHttpPortPreference), settings.lanHttpProxyPort.toString())
         prefs.put(key(R.string.shareProxyOnNetworkSocksPortPreference), settings.lanSocksProxyPort.toString())
+        prefs.put(key(R.string.shareProxyOnNetworkAuthEnabledPreference), settings.lanProxyAuthEnabled)
+        prefs.put(key(R.string.shareProxyOnNetworkUsernamePreference), settings.lanProxyUsername)
+        prefs.put(key(R.string.shareProxyOnNetworkPasswordPreference), settings.lanProxyPassword)
         prefs.put(key(R.string.bypassIranIPsPreference), settings.bypassIranIPsEnabled)
         prefs.put(key(R.string.bypassCustomRoutesPreference), settings.bypassCustomRoutes)
         prefs.put(key(R.string.bypassDomainsPreference), settings.bypassDomains)

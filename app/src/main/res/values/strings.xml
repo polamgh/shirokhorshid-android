@@ -218,6 +218,7 @@
 
     <!-- Network Sharing / LAN Proxy -->
     <string name="shareProxyOnNetworkPreference">shareProxyOnNetworkPreference</string>
+    <string name="shareProxyOnNetworkAuthEnabledPreference">shareProxyOnNetworkAuthEnabledPreference</string>
     <string name="shareProxyOnNetworkSocksPortPreference">shareProxyOnNetworkSocksPortPreference</string>
     <string name="shareProxyOnNetworkHttpPortPreference">shareProxyOnNetworkHttpPortPreference</string>
     <string name="shareProxyOnNetworkUsernamePreference">shareProxyOnNetworkUsernamePreference</string>
@@ -463,6 +464,35 @@
     <string name="azadi_lan_proxy_stopped">Stopped</string>
     <string name="azadi_lan_proxy_port_in_use">Port in use</string>
     <string name="azadi_lan_proxy_failed">Failed to start</string>
+
+    <string name="share_proxy_status_running">Running</string>
+    <string name="share_proxy_status_stopped">Stopped</string>
+    <string name="share_proxy_status_port_in_use">Port already in use</string>
+    <string name="share_proxy_status_no_wifi">No Wi-Fi IP found</string>
+    <string name="share_proxy_no_wifi_hint">No Wi-Fi IP found. Connect to Wi-Fi first.</string>
+    <string name="share_proxy_no_auth_warning">No password protection is currently enabled. Anyone on the same Wi-Fi network may be able to use this proxy while it is running.</string>
+    <string name="share_proxy_security_warning_ios">Security warning: This feature exposes a proxy server to your local Wi-Fi network. Only use it on trusted networks such as your home Wi-Fi. Do not enable it on public Wi-Fi.</string>
+    <string name="share_proxy_how_to_connect_title">How to connect another device</string>
+    <string name="share_proxy_how_to_iphone">iPhone / iPad</string>
+    <string name="share_proxy_how_to_android">Android</string>
+    <string name="share_proxy_how_to_windows">Windows</string>
+    <string name="share_proxy_how_to_android_tv">Android TV</string>
+    <string name="share_proxy_instructions_iphone">1. Connect the other iPhone/iPad to the same Wi-Fi.\n2. Open Settings.\n3. Tap Wi-Fi.\n4. Tap the info button next to your Wi-Fi network.\n5. Scroll to HTTP Proxy.\n6. Select Manual.\n7. Server: enter this phone\'s Wi-Fi IP.\n8. Port: enter 8087 or your custom HTTP port.\n9. Save and open Safari to test.</string>
+    <string name="share_proxy_instructions_android">1. Connect the Android phone to the same Wi-Fi.\n2. Open Wi-Fi settings.\n3. Tap your connected Wi-Fi network.\n4. Open Advanced settings or Proxy settings.\n5. Set Proxy to Manual.\n6. Proxy hostname: enter this phone\'s Wi-Fi IP.\n7. Proxy port: enter 8087 or your custom HTTP port.\n8. Save and test in browser.</string>
+    <string name="share_proxy_instructions_windows">1. Connect Windows to the same Wi-Fi.\n2. Open Settings.\n3. Go to Network &amp; Internet.\n4. Open Proxy.\n5. Turn on Manual proxy setup.\n6. Address: enter this phone\'s Wi-Fi IP.\n7. Port: enter 8087 or your custom HTTP port.\n8. Save and test in browser.</string>
+    <string name="share_proxy_instructions_android_tv">1. Connect Android TV to the same Wi-Fi.\n2. Open Settings.\n3. Go to Network &amp; Internet.\n4. Select your Wi-Fi network.\n5. Open Proxy settings if available.\n6. Choose Manual.\n7. Proxy hostname: enter this phone\'s Wi-Fi IP.\n8. Proxy port: enter 8087 or your custom HTTP port.\n9. Save and test with an app/browser.</string>
+    <string name="share_proxy_socks_note_title">SOCKS5 note</string>
+    <string name="share_proxy_socks_note_body">Some devices do not support SOCKS5 in system Wi-Fi settings. For SOCKS5, use an app/browser/player that supports SOCKS5 manually and enter the phone\'s Wi-Fi IP as the host and 1088 (or your custom SOCKS5 port) as the port.</string>
+    <string name="share_proxy_auth_section">Authentication</string>
+    <string name="share_proxy_auth_toggle">Enable authentication</string>
+    <string name="share_proxy_port_out_of_range">Port must be between 1024 and 65535.</string>
+    <string name="share_proxy_ports_must_differ">HTTP and SOCKS5 ports cannot be the same.</string>
+    <string name="share_proxy_ports_saved">Ports saved</string>
+    <string name="share_proxy_port_hint">Defaults: HTTP 8087, SOCKS5 1088.</string>
+
+    <string name="share_proxy_status_section">Status</string>
+    <string name="share_proxy_no_wifi_ip">—</string>
+    <string name="share_proxy_security_section">Security</string>
     <string name="azadi_test_dns">Test DNS</string>
     <string name="azadi_secure_dns_fullvpn_note">Secure DNS applies to Full VPN mode only. Reconnect after changes.</string>
     <string name="azadi_copied">Copied</string>

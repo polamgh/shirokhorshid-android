@@ -530,18 +530,33 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                                 },
                                 onSettingsChanged = { updated, reconnect ->
                                     azadiSettings = updated
-                                    if (reconnect) {
-                                        scope.launch {
-                                            val interactor = getTunnelServiceInteractor()
-                                            val wasRunning = awaitTunnelState().isRunning
-                                            if (wasRunning) {
-                                                SettingsReconnectHelper.reconnectIfConnected(
-                                                    isRunning = { true },
-                                                    disconnect = { interactor.stopTunnelService(this@MainActivity) },
-                                                    connect = { performConnect() }
-                                                )
+                                    when (reconnect) {
+                                        ReconnectMode.HARD -> {
+                                            scope.launch {
+                                                val interactor = getTunnelServiceInteractor()
+                                                val wasRunning = awaitTunnelState().isRunning
+                                                if (wasRunning) {
+                                                    SettingsReconnectHelper.reconnectIfConnected(
+                                                        isRunning = { true },
+                                                        disconnect = { interactor.stopTunnelService(this@MainActivity) },
+                                                        connect = { performConnect() }
+                                                    )
+                                                }
                                             }
                                         }
+                                        ReconnectMode.SOFT -> {
+                                            val interactor = getTunnelServiceInteractor()
+                                            compositeDisposable.add(
+                                                interactor.tunnelStateFlowable()
+                                                    .filter { !it.isUnknown }
+                                                    .take(1)
+                                                    .doOnNext { state ->
+                                                        if (state.isRunning) interactor.commandTunnelRestart()
+                                                    }
+                                                    .subscribe()
+                                            )
+                                        }
+                                        ReconnectMode.NONE -> { /* No-op */ }
                                     }
                                 },
                                 onExportDebug = {

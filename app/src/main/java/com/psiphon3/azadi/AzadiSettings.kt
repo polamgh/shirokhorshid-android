@@ -31,6 +31,9 @@ data class AzadiSettings(
     val shareProxyOnLocalNetworkEnabled: Boolean = false,
     val lanHttpProxyPort: Int = 8087,
     val lanSocksProxyPort: Int = 1088,
+    val lanProxyAuthEnabled: Boolean = false,
+    val lanProxyUsername: String = "",
+    val lanProxyPassword: String = "",
     val bypassIranIPsEnabled: Boolean = false,
     val bypassCustomRoutes: String = "",
     val bypassDomains: String = "",
@@ -41,6 +44,12 @@ data class AzadiSettings(
     val customDoTHost: String = "",
     val blockCleartextDNS: Boolean = false
 )
+
+enum class ReconnectMode {
+    NONE,
+    SOFT, // Restart tunnel only
+    HARD  // Restart full service
+}
 
 enum class SettingsDestination {
     ROOT,

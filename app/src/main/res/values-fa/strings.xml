@@ -437,6 +437,35 @@
   <string name="azadi_lan_proxy_stopped">متوقف</string>
   <string name="azadi_lan_proxy_port_in_use">پورت اشغال است</string>
   <string name="azadi_lan_proxy_failed">خطا در راه‌اندازی</string>
+
+  <string name="share_proxy_status_running">در حال اجرا</string>
+  <string name="share_proxy_status_stopped">متوقف</string>
+  <string name="share_proxy_status_port_in_use">پورت اشغال است</string>
+  <string name="share_proxy_status_no_wifi">آدرس Wi-Fi پیدا نشد</string>
+  <string name="share_proxy_no_wifi_hint">آدرس Wi-Fi پیدا نشد. ابتدا به Wi-Fi وصل شوید.</string>
+  <string name="share_proxy_no_auth_warning">در حال حاضر محافظت با گذرواژه فعال نیست. هر کسی روی همان Wi-Fi ممکن است بتواند از این پروکسی استفاده کند.</string>
+  <string name="share_proxy_security_warning_ios">هشدار امنیتی: این قابلیت یک سرور پروکسی را روی شبکهٔ Wi-Fi محلی شما در دسترس قرار می‌دهد. فقط روی شبکه‌های مورد اعتماد مانند Wi-Fi خانه استفاده کنید. روی Wi-Fi عمومی فعال نکنید.</string>
+  <string name="share_proxy_how_to_connect_title">راهنمای اتصال دستگاه دیگر</string>
+  <string name="share_proxy_how_to_iphone">آیفون / آیپد</string>
+  <string name="share_proxy_how_to_android">اندروید</string>
+  <string name="share_proxy_how_to_windows">ویندوز</string>
+  <string name="share_proxy_how_to_android_tv">اندروید TV</string>
+  <string name="share_proxy_instructions_iphone">۱. آیفون/آیپد دیگر را به همان Wi-Fi وصل کنید.\n۲. Settings (تنظیمات) را باز کنید.\n۳. روی Wi-Fi بزنید.\n۴. روی دکمهٔ info کنار نام شبکهٔ Wi-Fi بزنید.\n۵. تا HTTP Proxy پایین بروید.\n۶. Manual را انتخاب کنید.\n۷. در Server آدرس Wi-Fi این گوشی را وارد کنید.\n۸. در Port مقدار ۸۰۸۷ یا پورت HTTP سفارشی‌تان را وارد کنید.\n۹. ذخیره و سپس Safari را برای آزمایش باز کنید.</string>
+  <string name="share_proxy_instructions_android">۱. گوشی اندروید را به همان Wi-Fi وصل کنید.\n۲. تنظیمات Wi-Fi را باز کنید.\n۳. روی نام شبکهٔ متصل‌شده بزنید.\n۴. Advanced یا Proxy settings را باز کنید.\n۵. Proxy را روی Manual بگذارید.\n۶. در Proxy hostname آدرس Wi-Fi این گوشی را وارد کنید.\n۷. در Proxy port مقدار ۸۰۸۷ یا پورت HTTP سفارشی‌تان را وارد کنید.\n۸. ذخیره کنید و در مرورگر آزمایش کنید.</string>
+  <string name="share_proxy_instructions_windows">۱. ویندوز را به همان Wi-Fi وصل کنید.\n۲. Settings را باز کنید.\n۳. به Network &amp; Internet بروید.\n۴. بخش Proxy را باز کنید.\n۵. Manual proxy setup را روشن کنید.\n۶. در Address آدرس Wi-Fi این گوشی را وارد کنید.\n۷. در Port مقدار ۸۰۸۷ یا پورت HTTP سفارشی‌تان را وارد کنید.\n۸. ذخیره کنید و در مرورگر آزمایش کنید.</string>
+  <string name="share_proxy_instructions_android_tv">۱. اندروید TV را به همان Wi-Fi وصل کنید.\n۲. Settings را باز کنید.\n۳. به Network &amp; Internet بروید.\n۴. شبکهٔ Wi-Fi خود را انتخاب کنید.\n۵. در صورت وجود، Proxy settings را باز کنید.\n۶. Manual را انتخاب کنید.\n۷. در Proxy hostname آدرس Wi-Fi این گوشی را وارد کنید.\n۸. در Proxy port مقدار ۸۰۸۷ یا پورت HTTP سفارشی‌تان را وارد کنید.\n۹. ذخیره کنید و با یک اپ/مرورگر آزمایش کنید.</string>
+  <string name="share_proxy_socks_note_title">نکتهٔ SOCKS5</string>
+  <string name="share_proxy_socks_note_body">بعضی دستگاه‌ها در تنظیمات Wi-Fi سیستم از SOCKS5 پشتیبانی نمی‌کنند. برای SOCKS5 از یک اپ/مرورگر/پخش‌کننده که SOCKS5 را پشتیبانی می‌کند استفاده کنید و آدرس Wi-Fi این گوشی را به‌عنوان Host و ۱۰۸۸ (یا پورت SOCKS5 سفارشی) را به‌عنوان Port وارد کنید.</string>
+  <string name="share_proxy_auth_section">احراز هویت</string>
+  <string name="share_proxy_auth_toggle">فعال‌سازی احراز هویت</string>
+  <string name="share_proxy_port_out_of_range">پورت باید بین ۱۰۲۴ تا ۶۵۵۳۵ باشد.</string>
+  <string name="share_proxy_ports_must_differ">پورت HTTP و SOCKS5 نمی‌توانند یکسان باشند.</string>
+  <string name="share_proxy_ports_saved">پورت‌ها ذخیره شد</string>
+  <string name="share_proxy_port_hint">پیش‌فرض: HTTP ۸۰۸۷، SOCKS5 ۱۰۸۸.</string>
+
+  <string name="share_proxy_status_section">وضعیت</string>
+  <string name="share_proxy_no_wifi_ip">—</string>
+  <string name="share_proxy_security_section">امنیت</string>
   <string name="azadi_test_dns">تست DNS</string>
   <string name="azadi_secure_dns_fullvpn_note">DNS امن فقط در حالت VPN کامل اعمال می‌شود. پس از تغییر دوباره وصل شوید.</string>
   <string name="azadi_protocol_auto">خودکار</string>
@@ -534,4 +563,5 @@
     <string name="support_state_purchased">خریداری شده</string>
     <string name="support_state_subscribed">دارای اشتراک</string>
     <string name="support_state_expired">منقضی شده</string>
+  <string name="shareProxyOnNetworkAuthEnabledPreference">shareProxyOnNetworkAuthEnabledPreference</string>
 </resources>

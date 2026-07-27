@@ -44,7 +44,7 @@ fun AzadiSettingsScreen(
     tunnelState: TunnelState,
     connectionUi: ConnectionUiState,
     onDestinationChange: (SettingsDestination) -> Unit,
-    onSettingsChanged: (AzadiSettings, Boolean) -> Unit,
+    onSettingsChanged: (AzadiSettings, ReconnectMode) -> Unit,
     onExportDebug: () -> Unit,
     onLanguageSelected: (String) -> Unit
 ) {
@@ -53,7 +53,7 @@ fun AzadiSettingsScreen(
         localSettings = settings
     }
 
-    fun persist(updated: AzadiSettings, reconnect: Boolean = true, logKey: String = "settings") {
+    fun persist(updated: AzadiSettings, reconnect: ReconnectMode = ReconnectMode.HARD, logKey: String = "settings") {
         localSettings = updated
         settingsStore.updateAppSettings(updated, logKey)
         onSettingsChanged(updated, reconnect)
@@ -63,30 +63,30 @@ fun AzadiSettingsScreen(
         SettingsDestination.LOGS -> { }
         SettingsDestination.BYPASS_IRAN -> BypassIranScreen(
             settings = localSettings,
-            onUpdate = { persist(it) },
+            onUpdate = { updated, mode -> persist(updated, mode) },
             onBack = { onDestinationChange(SettingsDestination.ROOT) }
         )
         SettingsDestination.SECURE_DNS -> SecureDnsScreen(
             settings = localSettings,
             vpnConnected = vpnConnected,
-            onUpdate = { persist(it, reconnect = true) },
+            onUpdate = { updated, mode -> persist(updated, mode) },
             onBack = { onDestinationChange(SettingsDestination.ROOT) }
         )
         SettingsDestination.PROXY_ONLY -> ProxyOnlyScreen(
             settings = localSettings,
             vpnConnected = vpnConnected,
-            onUpdate = { persist(it, reconnect = true) },
+            onUpdate = { updated, mode -> persist(updated, mode) },
             onBack = { onDestinationChange(SettingsDestination.ROOT) }
         )
         SettingsDestination.SHARE_PROXY -> ShareProxyScreen(
             settings = localSettings,
             vpnConnected = vpnConnected,
-            onUpdate = { persist(it, reconnect = true) },
+            onUpdate = { updated, mode -> persist(updated, mode) },
             onBack = { onDestinationChange(SettingsDestination.ROOT) }
         )
         SettingsDestination.UPSTREAM_PROXY -> UpstreamProxyScreen(
             settings = localSettings,
-            onUpdate = { persist(it, reconnect = true) },
+            onUpdate = { updated, mode -> persist(updated, mode) },
             onBack = { onDestinationChange(SettingsDestination.ROOT) }
         )
         SettingsDestination.ABOUT -> AboutScreen(
@@ -122,7 +122,7 @@ private fun AzadiSettingsRoot(
     settings: AzadiSettings,
     settingsStore: AzadiSettingsStore,
     vpnConnected: Boolean,
-    onPersist: (AzadiSettings, Boolean, String) -> Unit,
+    onPersist: (AzadiSettings, ReconnectMode, String) -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onExportDebug: () -> Unit,
     onLanguageSelected: (String) -> Unit
@@ -223,7 +223,7 @@ private fun AzadiSettingsRoot(
             AzadiToggleRow(
                 label = stringResource(R.string.beastModePreferenceTitle),
                 checked = settings.beastModeEnabled,
-                onCheckedChange = { onPersist(settings.copy(beastModeEnabled = it), false, "beastMode") },
+                onCheckedChange = { onPersist(settings.copy(beastModeEnabled = it), ReconnectMode.SOFT, "beastMode") },
                 testTag = "beastModeToggle"
             )
             if (settings.protocolSelection == "conduit" && settingsStore.conduitConnectAllowed()) {
@@ -238,7 +238,7 @@ private fun AzadiSettingsRoot(
                     label = stringResource(R.string.azadi_reject_censored_countries),
                     checked = settings.rejectCensoredCountryProxies,
                     onCheckedChange = {
-                        onPersist(settings.copy(rejectCensoredCountryProxies = it), false, "conduit_reject_countries")
+                        onPersist(settings.copy(rejectCensoredCountryProxies = it), ReconnectMode.SOFT, "conduit_reject_countries")
                     }
                 )
                 AzadiDivider()
@@ -262,7 +262,7 @@ private fun AzadiSettingsRoot(
                     label = stringResource(R.string.azadi_cdn_builtin_scan),
                     checked = settings.cdnFrontingUseBuiltInScan,
                     onCheckedChange = {
-                        onPersist(settings.copy(cdnFrontingUseBuiltInScan = it), false, "cdnBuiltInScan")
+                        onPersist(settings.copy(cdnFrontingUseBuiltInScan = it), ReconnectMode.SOFT, "cdnBuiltInScan")
                     }
                 )
                 AzadiDivider()
@@ -287,7 +287,7 @@ private fun AzadiSettingsRoot(
                                 cdnFrontingCustomIpList = cdnCustomIps.trim(),
                                 cdnFrontingCustomSni = cdnCustomSni.trim()
                             ),
-                            false,
+                            ReconnectMode.SOFT,
                             "cdnCustomOverrides"
                         )
                     },
@@ -303,7 +303,7 @@ private fun AzadiSettingsRoot(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_upstream_proxy_enable),
                 checked = settings.upstreamProxyEnabled,
-                onCheckedChange = { onPersist(settings.copy(upstreamProxyEnabled = it), false, "upstreamProxy") }
+                onCheckedChange = { onPersist(settings.copy(upstreamProxyEnabled = it), ReconnectMode.SOFT, "upstreamProxy") }
             )
             if (settings.upstreamProxyEnabled) {
                 AzadiDivider()
@@ -321,7 +321,7 @@ private fun AzadiSettingsRoot(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_proxy_only_mode_title),
                 checked = settings.proxyOnlyModeEnabled,
-                onCheckedChange = { onPersist(settings.copy(proxyOnlyModeEnabled = it), true, "proxyOnly") },
+                onCheckedChange = { onPersist(settings.copy(proxyOnlyModeEnabled = it), ReconnectMode.SOFT, "proxyOnly") },
                 subtitle = stringResource(R.string.azadi_proxy_only_subtitle),
                 warning = stringResource(R.string.azadi_proxy_only_warning),
                 testTag = "proxyOnlySettingsToggle"
@@ -366,26 +366,26 @@ private fun AzadiSettingsRoot(
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_smart_fallback),
                 checked = settings.smartFallbackChainEnabled,
-                onCheckedChange = { onPersist(settings.copy(smartFallbackChainEnabled = it), false, "smartFallback") }
+                onCheckedChange = { onPersist(settings.copy(smartFallbackChainEnabled = it), ReconnectMode.SOFT, "smartFallback") }
             )
             AzadiDivider()
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_auto_reconnect),
                 checked = settings.autoReconnect,
-                onCheckedChange = { onPersist(settings.copy(autoReconnect = it), false, "autoReconnect") }
+                onCheckedChange = { onPersist(settings.copy(autoReconnect = it), ReconnectMode.NONE, "autoReconnect") }
             )
             AzadiDivider()
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_connect_on_launch),
                 checked = settings.connectOnLaunch,
-                onCheckedChange = { onPersist(settings.copy(connectOnLaunch = it), false, "connectOnLaunch") }
+                onCheckedChange = { onPersist(settings.copy(connectOnLaunch = it), ReconnectMode.NONE, "connectOnLaunch") }
             )
             AzadiDivider()
             AzadiToggleRow(
                 label = stringResource(R.string.azadi_vpn_on_demand),
                 checked = settings.vpnOnDemandEnabled,
                 onCheckedChange = { enabled ->
-                    onPersist(settings.copy(vpnOnDemandEnabled = enabled), false, "vpnOnDemand")
+                    onPersist(settings.copy(vpnOnDemandEnabled = enabled), ReconnectMode.NONE, "vpnOnDemand")
                     if (enabled) context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
                 },
                 testTag = "vpnOnDemandToggle"
@@ -481,7 +481,7 @@ private fun AzadiSettingsRoot(
     if (showRegionPicker) {
         RegionPickerSheet(
             selectedRegionCode = settings.egressRegion.ifEmpty { PsiphonConstants.REGION_CODE_ANY },
-            onRegionSelected = { onPersist(settings.copy(egressRegion = it), false, "egressRegion") },
+            onRegionSelected = { onPersist(settings.copy(egressRegion = it), ReconnectMode.SOFT, "egressRegion") },
             onDismiss = { showRegionPicker = false },
             regionCodes = availableRegions
         )
@@ -490,7 +490,7 @@ private fun AzadiSettingsRoot(
         ProtocolPickerSheet(
             current = settings.protocolSelection,
             conduitAllowed = settingsStore.conduitConnectAllowed(),
-            onSelect = { onPersist(settings.copy(protocolSelection = it), false, "protocolSelection") },
+            onSelect = { onPersist(settings.copy(protocolSelection = it), ReconnectMode.SOFT, "protocolSelection") },
             onDismiss = { showProtocolPicker = false }
         )
     }
@@ -508,7 +508,7 @@ private fun AzadiSettingsRoot(
         ConduitModePickerSheet(
             current = settings.conduitMode,
             onSelect = {
-                onPersist(settings.copy(conduitMode = it), false, "conduitMode")
+                onPersist(settings.copy(conduitMode = it), ReconnectMode.SOFT, "conduitMode")
                 showConduitModePicker = false
             },
             onDismiss = { showConduitModePicker = false }
@@ -518,7 +518,7 @@ private fun AzadiSettingsRoot(
         ConduitTimeoutPickerSheet(
             current = settings.conduitTimeoutSeconds,
             onSelect = {
-                onPersist(settings.copy(conduitTimeoutSeconds = it), false, "conduitTimeout")
+                onPersist(settings.copy(conduitTimeoutSeconds = it), ReconnectMode.SOFT, "conduitTimeout")
                 showConduitTimeoutPicker = false
             },
             onDismiss = { showConduitTimeoutPicker = false }
@@ -528,7 +528,7 @@ private fun AzadiSettingsRoot(
         VpnOnDemandModePickerSheet(
             current = settings.vpnOnDemandMode,
             onSelect = {
-                onPersist(settings.copy(vpnOnDemandMode = it), false, "vpnOnDemandMode")
+                onPersist(settings.copy(vpnOnDemandMode = it), ReconnectMode.SOFT, "vpnOnDemandMode")
                 showVpnOnDemandModePicker = false
             },
             onDismiss = { showVpnOnDemandModePicker = false }
@@ -542,7 +542,7 @@ private fun AzadiSettingsRoot(
             text = { Text(stringResource(R.string.azadi_reset_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
-                    onPersist(settingsStore.resetToDefaults(settings), true, "resetDefaults")
+                    onPersist(settingsStore.resetToDefaults(settings), ReconnectMode.HARD, "resetDefaults")
                     showResetDialog = false
                 }) { Text(stringResource(R.string.lbl_yes)) }
             },
@@ -731,10 +731,4 @@ private fun proxySubtitle(settings: AzadiSettings): String {
         return "${settings.upstreamProxyHost}:${settings.upstreamProxyPort}"
     }
     return stringResource(R.string.azadi_upstream_configure)
-}
-
-fun copyText(context: Context, label: String, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
-    Toast.makeText(context, R.string.azadi_copied, Toast.LENGTH_SHORT).show()
 }

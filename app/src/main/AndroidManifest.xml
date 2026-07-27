@@ -28,7 +28,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>
     <!-- Instruct manifest merger to remove unused permissions from final manifest -->
     <uses-permission android:name="android.permission.NFC" tools:node="remove" />
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
 
     <!-- Narrow package visibility declaration for launcher apps (replaces QUERY_ALL_PACKAGES) -->
