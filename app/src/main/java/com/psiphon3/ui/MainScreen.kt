@@ -79,7 +79,7 @@ fun MainScreen(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 76.dp),
+                .padding(top = 8.dp, bottom = 80.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             DashboardHeader(onSupportClick = onSupportClick)

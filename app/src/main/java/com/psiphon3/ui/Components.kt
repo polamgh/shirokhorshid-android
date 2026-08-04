@@ -599,7 +599,6 @@ fun AzadiFloatingBottomNav(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
             .padding(horizontal = 20.dp)
             .padding(bottom = 6.dp),
         contentAlignment = Alignment.Center

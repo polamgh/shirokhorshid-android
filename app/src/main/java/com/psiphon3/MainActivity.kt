@@ -662,6 +662,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
         }
         AppLocaleHelper.applyToActivity(this, lang)
         onSaved(updated)
+        recreate()
     }
 
     private suspend fun awaitTunnelState(): TunnelState = withContext(Dispatchers.IO) {

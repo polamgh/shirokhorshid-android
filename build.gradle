@@ -29,7 +29,7 @@ ext {
     rxrelayVersion = '2.1.0'
     autoValueVersion = '1.5.2'
     multidexVersion = '2.0.1'
-    appcompatVersion = '1.2.0'
+    appcompatVersion = '1.6.1'
     materialVersion = '1.2.0'
     constraintLayoutVersion = '2.0.4'
     recyclerviewVersion ='1.1.0'

@@ -171,7 +171,8 @@ private fun AzadiSettingsRoot(
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp)
+                .padding(top = 12.dp, bottom = 80.dp)
         ) {
         Text(
             text = stringResource(R.string.azadi_tab_settings),
@@ -426,7 +427,13 @@ private fun AzadiSettingsRoot(
             AzadiActionLink(
                 text = stringResource(R.string.azadi_import_config_json),
                 testTag = "import_config_button",
-                onClick = { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }
+                onClick = {
+                    try {
+                        importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                    } catch (e: Exception) {
+                        Toast.makeText(context, R.string.azadi_import_failed, Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
             AzadiDivider()
             AzadiActionLink(

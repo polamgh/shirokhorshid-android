@@ -138,7 +138,9 @@ fun AzadiLogsScreen(
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
-                items(statusLogs) { entry -> LogItem(entry) }
+                items(statusLogs) { entry -> 
+                    (entry as LogEntry?)?.let { LogItem(it) } 
+                }
             }
         }
     }
@@ -151,7 +153,9 @@ private fun copyLogs(context: Context, statusLogs: List<LogEntry>, eventLogs: Li
         eventLogs.forEach { appendLine(it) }
         appendLine("=== Tunnel Status ===")
         statusLogs.forEach { entry ->
-            appendLine(MyLog.getStatusLogMessageForDisplay(entry.logJson, context))
+            (entry as LogEntry?)?.let {
+                appendLine(MyLog.getStatusLogMessageForDisplay(it.logJson, context))
+            }
         }
     }
     clipboard.setPrimaryClip(ClipData.newPlainText("AzadiTunnel logs", text))
