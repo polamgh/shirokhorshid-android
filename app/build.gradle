@@ -323,8 +323,8 @@ android {
         applicationId "com.azaditunnel.vpn"
         resValue "string", "tray__authority", "${applicationId}.tray"
         minSdkVersion 24
-        compileSdk 35
-        targetSdkVersion 35
+        compileSdk 36
+        targetSdkVersion 36
         versionCode verCode
         versionName verName
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -488,5 +488,5 @@ dependencies {
     implementation "com.github.drfonfon:android-geohash:$rootProject.ext.geoHashVersion"
 
     // Billing
-    implementation 'com.android.billingclient:billing-ktx:7.1.1'
+    implementation 'com.android.billingclient:billing-ktx:9.1.0'
 }

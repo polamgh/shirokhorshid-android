@@ -45,6 +45,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
     private val billingClient = BillingClient.newBuilder(context)
         .setListener(this)
         .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
+        .enableAutoServiceReconnection()
         .build()
 
     private val _products = MutableStateFlow<List<ProductDetails>>(emptyList())
@@ -148,19 +149,18 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             .setProductList(inAppProductList)
             .build()
 
-        billingClient.queryProductDetailsAsync(inAppParams) { billingResult, productDetailsList ->
+        billingClient.queryProductDetailsAsync(inAppParams) { billingResult, result ->
+            val productDetailsList = result.productDetailsList
             logI("INAPP Query Result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${productDetailsList.size}")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                val returnedIds = productDetailsList.map { it.productId }.toSet()
                 productDetailsList.forEach { details ->
                     logI("Returned INAPP Product: productId=${details.productId}, name='${details.name}', formattedPrice='${details.oneTimePurchaseOfferDetails?.formattedPrice}'")
                     allReturnedProducts.add(details)
                 }
 
-                // Check and print Unfetched INAPP Products
-                val requestedInAppIds = listOf(PRODUCT_TIP_SMALL, PRODUCT_TIP_MEDIUM, PRODUCT_TIP_LARGE)
-                requestedInAppIds.filter { it !in returnedIds }.forEach { unfetchedId ->
-                    logW("Unfetched INAPP Product: productId=$unfetchedId, statusCode=${billingResult.responseCode}")
+                // Log Unfetched Products using the new PBL 9 API
+                result.unfetchedProductList.forEach { unfetched ->
+                    logW("Unfetched INAPP Product: productId=${unfetched.productId}, statusCode=${unfetched.statusCode}")
                 }
             } else {
                 logE("Failed to query INAPP products: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
@@ -173,10 +173,10 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             .setProductList(subsProductList)
             .build()
 
-        billingClient.queryProductDetailsAsync(subsParams) { billingResult, productDetailsList ->
+        billingClient.queryProductDetailsAsync(subsParams) { billingResult, result ->
+            val productDetailsList = result.productDetailsList
             logI("SUBS Query Result: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', count=${productDetailsList.size}")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                val returnedIds = productDetailsList.map { it.productId }.toSet()
                 productDetailsList.forEach { details ->
                     logI("Returned SUBS Product: productId=${details.productId}, name='${details.name}'")
                     val offerDetailsList = details.subscriptionOfferDetails
@@ -191,10 +191,9 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
                     allReturnedProducts.add(details)
                 }
 
-                // Check and print Unfetched SUBS Products
-                val requestedSubsIds = listOf(PRODUCT_SUPPORT_MONTHLY, PRODUCT_SUPPORT_YEARLY)
-                requestedSubsIds.filter { it !in returnedIds }.forEach { unfetchedId ->
-                    logW("Unfetched SUBS Product: productId=$unfetchedId, statusCode=${billingResult.responseCode}")
+                // Log Unfetched Products using the new PBL 9 API
+                result.unfetchedProductList.forEach { unfetched ->
+                    logW("Unfetched SUBS Product: productId=${unfetched.productId}, statusCode=${unfetched.statusCode}")
                 }
             } else {
                 logE("Failed to query SUBS products: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
