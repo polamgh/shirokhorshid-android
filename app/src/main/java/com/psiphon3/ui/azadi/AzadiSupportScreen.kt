@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.psiphon3.R
+import com.psiphon3.azadi.FirebaseAnalyticsManager
 import com.psiphon3.azadi.SupportStoreManager
 import com.psiphon3.ui.GlassCard
 import com.psiphon3.ui.theme.AppColors
@@ -45,6 +46,7 @@ fun AzadiSupportScreen(
 
     LaunchedEffect(Unit) {
         store.startConnection()
+        FirebaseAnalyticsManager.logPaywallViewed("support_screen")
     }
 
     LaunchedEffect(uiState) {

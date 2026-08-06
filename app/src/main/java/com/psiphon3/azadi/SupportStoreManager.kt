@@ -204,6 +204,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
 
     fun purchase(activity: Activity, productDetails: ProductDetails) {
         logI("Purchase requested for productId=${productDetails.productId}, type=${productDetails.productType}")
+        FirebaseAnalyticsManager.logPurchaseStarted(productDetails.productId)
         _uiState.value = BillingUiState.Loading
 
         val productDetailsParamsBuilder = BillingFlowParams.ProductDetailsParams.newBuilder()
@@ -251,10 +252,12 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
                 logI("User canceled purchase flow")
+                FirebaseAnalyticsManager.logPurchaseFailed("unknown", "user_canceled")
                 _uiState.value = BillingUiState.Error("Purchase canceled", isUserCanceled = true)
             }
             else -> {
                 logE("Purchase failed: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
+                FirebaseAnalyticsManager.logPurchaseFailed("unknown", "error_${billingResult.responseCode}")
                 _uiState.value = BillingUiState.Error("Purchase failed: ${billingResult.debugMessage}")
             }
         }
@@ -271,6 +274,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
                 } else {
                     acknowledgePurchase(purchase)
                 }
+                FirebaseAnalyticsManager.logPurchaseCompleted(productId)
             }
             Purchase.PurchaseState.PENDING -> {
                 _uiState.value = BillingUiState.Pending("Purchase is pending completion.")
@@ -325,6 +329,7 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
 
     fun queryPurchases() {
         logI("Querying existing purchases...")
+        FirebaseAnalyticsManager.logRestoreStarted()
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build()
         ) { billingResult, purchases ->
@@ -335,6 +340,9 @@ class SupportStoreManager private constructor(private val context: Context) : Pu
                 }
                 logI("User active subscription status: isSubscribed=$isSubscribed")
                 _purchaseState.value = if (isSubscribed) PurchaseState.SUBSCRIBED else PurchaseState.NOT_PURCHASED
+                FirebaseAnalyticsManager.logRestoreCompleted(true)
+            } else {
+                FirebaseAnalyticsManager.logRestoreCompleted(false)
             }
         }
     }

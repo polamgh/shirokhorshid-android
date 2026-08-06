@@ -38,6 +38,7 @@ class ConnectionCoordinator(
 
     suspend fun disconnect(interactor: TunnelServiceInteractor) {
         AzadiEventLogger.log("VPN_DISCONNECT_REQUESTED")
+        FirebaseAnalyticsManager.logVpnDisconnected()
         TunnelStatisticsStore.markDisconnected(context)
         _uiState.value = _uiState.value.copy(
             connectedProtocol = null,
@@ -64,6 +65,7 @@ class ConnectionCoordinator(
         awaitTunnelState: suspend () -> TunnelState
     ): Boolean {
         AzadiEventLogger.log("VPN_CONNECT_REQUESTED")
+        FirebaseAnalyticsManager.logVpnConnectStarted(settings.protocolSelection)
 
         if (!settings.hasAcceptedConnectionDisclaimer) {
             AzadiEventLogger.log("CONNECT_BLOCKED_PENDING_DISCLAIMER")
@@ -141,6 +143,7 @@ class ConnectionCoordinator(
             _uiState.value = _uiState.value.copy(
                 errorMessage = context.getString(com.psiphon3.R.string.azadi_no_internet)
             )
+            FirebaseAnalyticsManager.logVpnConnectFailed(settings.protocolSelection, "no_internet")
             return false
         }
 
@@ -154,6 +157,7 @@ class ConnectionCoordinator(
         )
         AzadiEventLogger.log("PSIPHON_TUNNEL_ESTABLISHED", protocol)
         AzadiEventLogger.log("TUNNEL_CONNECTED", protocol)
+        FirebaseAnalyticsManager.logVpnConnectSuccess(settings.protocolSelection, protocol)
 
         if (settings.proxyOnlyModeEnabled) {
             val wifiIp = LocalNetworkAddress.wifiIpv4(context)

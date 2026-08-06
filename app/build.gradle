@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+apply plugin: 'com.google.gms.google-services'
 
 // ---------------------------------------------------------------------------
 // Generate EmbeddedValues.java from environment variables before compilation.
@@ -489,4 +490,8 @@ dependencies {
 
     // Billing
     implementation 'com.android.billingclient:billing-ktx:9.1.0'
+
+    // Firebase
+    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+    implementation 'com.google.firebase:firebase-analytics-ktx'
 }

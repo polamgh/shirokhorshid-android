@@ -57,6 +57,10 @@ fun AzadiSettingsScreen(
         localSettings = updated
         settingsStore.updateAppSettings(updated, logKey)
         onSettingsChanged(updated, reconnect)
+
+        if (logKey == "protocol") {
+            FirebaseAnalyticsManager.logConnectionModeSelected(updated.protocolSelection)
+        }
     }
 
     when (destination) {

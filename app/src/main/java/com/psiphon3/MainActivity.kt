@@ -848,6 +848,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
         if (regionCode == tray.getString(key, PsiphonConstants.REGION_CODE_ANY)) return
         tray.put(key, regionCode)
         azadiSettingsStore.save(azadiSettingsStore.load().copy(egressRegion = regionCode))
+        FirebaseAnalyticsManager.logServerSelectionChanged(regionCode)
 
         compositeDisposable.add(
             getTunnelServiceInteractor().tunnelStateFlowable()

@@ -20,11 +20,13 @@
 
 package com.psiphon3;
 
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.pm.PackageManager;
+import android.os.Build;
 
 import androidx.multidex.MultiDex;
 
@@ -33,6 +35,7 @@ import com.psiphon3.psiphonlibrary.LocaleManager;
 import com.psiphon3.psiphonlibrary.PsiphonConstants;
 import com.psiphon3.psiphonlibrary.TunnelVpnService;
 import com.psiphon3.psiphonlibrary.Utils;
+import com.psiphon3.azadi.FirebaseAnalyticsManager;
 
 import java.io.IOException;
 
@@ -102,6 +105,10 @@ public class PsiphonApplication extends Application {
 
         PsiphonConstants.DEBUG = Utils.isDebugMode(this);
 
+        if (isMainProcess()) {
+            FirebaseAnalyticsManager.INSTANCE.initialize(this);
+        }
+
         // If an Rx subscription is disposed while the observable is still running its async task
         // which may throw an error the error will have nowhere to go and will result in an uncaught
         // UndeliverableException being thrown. We are going to set up a global error handler to make
@@ -127,6 +134,25 @@ public class PsiphonApplication extends Application {
                 currentThread.getUncaughtExceptionHandler().uncaughtException(currentThread, e);
             }
         });
+    }
+
+    private boolean isMainProcess() {
+        String processName = "";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            processName = Application.getProcessName();
+        } else {
+            int pid = android.os.Process.myPid();
+            ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (manager != null && manager.getRunningAppProcesses() != null) {
+                for (ActivityManager.RunningAppProcessInfo processInfo : manager.getRunningAppProcesses()) {
+                    if (processInfo.pid == pid) {
+                        processName = processInfo.processName;
+                        break;
+                    }
+                }
+            }
+        }
+        return getPackageName().equals(processName);
     }
 
     @Override
