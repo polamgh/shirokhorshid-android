@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "907864014627",
+    "project_id": "azaditunnel-6a3d2",
+    "storage_bucket": "azaditunnel-6a3d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:907864014627:android:c6fb93c1c81b4b0d479696",
+        "android_client_info": {
+          "package_name": "com.azaditunnel.vpn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDrHvApYxYsjtTvXi3uemg3qwdbPbJdKs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
