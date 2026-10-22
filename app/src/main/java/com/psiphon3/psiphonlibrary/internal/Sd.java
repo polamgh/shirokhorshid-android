@@ -8,6 +8,19 @@ public final class Sd {
     private Sd() {
     }
 
+    /** Latin-1 string literal(s) from the generated EmbeddedValues back to encoded bytes. */
+    public static byte[] b(String... chunks) {
+        StringBuilder joined = new StringBuilder();
+        for (String chunk : chunks) {
+            joined.append(chunk);
+        }
+        byte[] out = new byte[joined.length()];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = (byte) joined.charAt(i);
+        }
+        return out;
+    }
+
     public static String d(int seed, byte[] enc) {
         if (enc == null || enc.length == 0) {
             return "";

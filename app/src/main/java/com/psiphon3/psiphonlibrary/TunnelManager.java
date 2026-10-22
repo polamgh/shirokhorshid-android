@@ -2005,6 +2005,12 @@ public class TunnelManager implements PsiphonTunnel.HostService, VpnManager.VpnS
 
             // Protocol selection: auto, conduit, CDN fronting, or direct
             String protocolSelection = tunnelConfig.protocolSelection;
+            // In-proxy (Conduit) cannot run behind an upstream proxy, so the tunnel would never
+            // establish; use the regular protocols instead (same rule as the iOS app).
+            if ("conduit".equals(protocolSelection) && json.has("UpstreamProxyUrl")) {
+                MyLog.i("ProtocolSelection", "conduit_skipped", "upstream_proxy");
+                protocolSelection = "auto";
+            }
             MyLog.i("ProtocolSelection", "mode", protocolSelection);
 
             boolean enableCdnFronting =

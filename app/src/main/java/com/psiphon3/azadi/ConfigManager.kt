@@ -12,6 +12,7 @@ object ConfigManager {
     private const val KEY_BOOTSTRAP_INSTALLED = "psiphon_bootstrap_installed"
     private const val KEY_USES_BUNDLED = "psiphon_uses_bundled_config"
     private const val KEY_BOOTSTRAP_VERSION = "psiphon_bootstrap_app_version"
+    private const val KEY_BOOTSTRAP_ENTRY_COUNT = "psiphon_bootstrap_bundled_entry_count"
     private const val PSIPHON_DIR = "psiphon"
     private const val SERVER_ENTRIES_FILE = "psiphon-embedded-server-entries.txt"
 
@@ -23,7 +24,9 @@ object ConfigManager {
         val usesBundled = prefs.getBoolean(KEY_USES_BUNDLED, true)
 
         if (!force && prefs.getBoolean(KEY_BOOTSTRAP_INSTALLED, false) &&
-            lastVersion == version && usesBundled && !hasCustomConfig(appContext)
+            lastVersion == version && usesBundled && !hasCustomConfig(appContext) &&
+            // A refreshed bundled server list re-installs even without a version bump.
+            prefs.getInt(KEY_BOOTSTRAP_ENTRY_COUNT, -1) == BundledServerEntries.lineCount(appContext)
         ) {
             return hasActiveConfig(appContext)
         }
@@ -72,6 +75,7 @@ object ConfigManager {
         prefs.put(KEY_BOOTSTRAP_INSTALLED, true)
         prefs.put(KEY_USES_BUNDLED, true)
         prefs.put(KEY_BOOTSTRAP_VERSION, version)
+        prefs.put(KEY_BOOTSTRAP_ENTRY_COUNT, BundledServerEntries.lineCount(appContext))
         AzadiEventLogger.logSync("PSIPHON_BUNDLED_CONFIG_INSTALLED")
         AzadiEventLogger.logSync("PSIPHON_CONFIG_FOUND")
         return hasActiveConfig(appContext)

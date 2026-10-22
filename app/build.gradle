@@ -93,19 +93,33 @@ task generateEmbeddedValues {
         // Escape double quotes in JSON strings for embedding in plain Java literals
         def escapeJava = { String s -> s.replace('"', '\\"') }
 
-        // XOR-encode sensitive values — must match com.psiphon3.psiphonlibrary.internal.Sd.d()
+        // XOR-encode sensitive values — must match com.psiphon3.psiphonlibrary.internal.Sd.d().
+        // The encoded bytes are emitted as Latin-1 string literals (octal escapes for anything
+        // non-printable) rather than `new byte[]{...}` initializers: string literals live in the
+        // constant pool, so long URL lists no longer blow the 64 KB static-initializer limit.
         def encodeBytes = { String text, int seed ->
             if (text == null || text.isEmpty()) {
                 return 'new byte[0]'
             }
             def bytes = text.getBytes('UTF-8')
-            def parts = []
+            def chunks = []
+            def literal = new StringBuilder()
             bytes.eachWithIndex { byte b, int i ->
                 int k = (seed ^ (i * 31) ^ (i >>> 3)) & 0xFF
                 int v = (b & 0xFF) ^ k
-                parts << "((byte)${v})"
+                if (v >= 0x20 && v < 0x7F && v != 0x22 && v != 0x5C) {
+                    literal.append((char) v)
+                } else {
+                    literal.append('\\').append(String.format('%03o', v))
+                }
+                // Keep each literal well under the class-file 65535-byte constant limit.
+                if ((i + 1) % 16000 == 0) {
+                    chunks << literal.toString()
+                    literal.setLength(0)
+                }
             }
-            return "new byte[]{${parts.join(', ')}}"
+            if (literal.length() > 0) chunks << literal.toString()
+            return "com.psiphon3.psiphonlibrary.internal.Sd.b(${chunks.collect { '"' + it + '"' }.join(', ')})"
         }
 
         def seedPropagation = 0x5A
