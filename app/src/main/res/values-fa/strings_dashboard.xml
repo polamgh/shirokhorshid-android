@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dash2_protected">محافظت‌شده</string>
+    <string name="dash2_unprotected">بدون محافظت</string>
+    <string name="dash2_details">جزئیات</string>
+    <string name="dash2_hide_details">بستن جزئیات</string>
+    <string name="dash2_total">مجموع</string>
+    <string name="dash2_ping">پینگ</string>
+    <string name="dash2_copied">در کلیپ‌بورد کپی شد</string>
+    <string name="dash2_slow_title">اتصال بیشتر از حد معمول طول کشیده است</string>
+    <string name="dash2_slow_message">ابتدا پروتکل را تغییر دهید. اگر وصل نشد، منطقه را عوض کنید، اتصال را قطع کنید و دوباره وصل شوید تا تست شود.</string>
+    <string name="dash2_splash_tagline">تونل متمرکز بر حریم خصوصی برای اینترنت بازتر</string>
+    <string name="dash2_copy">کپی</string>
+</resources>

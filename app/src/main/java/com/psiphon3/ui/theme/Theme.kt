@@ -19,6 +19,9 @@ val Vazirmatn = FontFamily(
     Font(R.font.vazirmatn, FontWeight.Bold)
 )
 
+/** Script face for the "AzadiTunnel" wordmark (SIL OFL, see assets/legal). */
+val GrandHotel = FontFamily(Font(R.font.grand_hotel, FontWeight.Normal))
+
 val AzadiTypography = Typography()
 
 private val DarkColorScheme = darkColorScheme(
@@ -64,6 +67,15 @@ object AppColors {
     val DisconnectedRed = IranRed
     val NavBlue = Color(0xFF0A84FF)
     val GlowGreen = Color(0xFF30D158)
+
+    /** Map-first surfaces shared with iOS 1.6 (dark scheme). */
+    val SurfaceTop = Color(0xFF080D17)
+    val SurfaceBottom = Color(0xFF0D1424)
+    val PrimaryText = Color.White
+    val SecondaryText = Color(0xFFA1A8B5)
+    val Warning = Color(0xFFFF9F0A)
+    val Glass = Color(0xFF1A2130).copy(alpha = 0.78f)
+    val GlassStroke = Color.White.copy(alpha = 0.12f)
 }
 
 object AppGradients {

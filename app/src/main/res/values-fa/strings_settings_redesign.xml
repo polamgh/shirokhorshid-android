@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings2_back">بازگشت</string>
+    <string name="settings2_custom">سفارشی</string>
+    <string name="settings2_network_tools">ابزارهای شبکه</string>
+    <string name="settings2_upstream_proxy">پروکسی بالادست</string>
+    <string name="settings2_about_company_label">شرکت</string>
+    <string name="settings2_about_company_value">Debugsy Inc.</string>
+    <string name="settings2_about_app_version_label">نسخهٔ اپ</string>
+    <string name="settings2_about_rate_us">امتیازدهی</string>
+    <string name="settings2_about_x">X</string>
+    <string name="settings2_about_contact_us">تماس با ما</string>
+    <string name="settings2_about_psiphon_website">Psiphon (psiphon.ca)</string>
+    <string name="settings2_about_copyright">© %1$d Debugsy Inc. تمامی حقوق محفوظ است.</string>
+</resources>

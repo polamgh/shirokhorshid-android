@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stats tab (ported from iOS StatisticsView / L10n stats keys) -->
+    <string name="stats_tab">Stats</string>
+    <string name="stats_title">Statistics</string>
+
+    <string name="stats_status_connected">Connected</string>
+    <string name="stats_status_connecting">Connecting…</string>
+    <string name="stats_status_disconnected">Disconnected</string>
+    <string name="stats_status_failed">Failed</string>
+
+    <string name="stats_download">Download</string>
+    <string name="stats_upload">Upload</string>
+    <string name="stats_total_download">Total download</string>
+    <string name="stats_total_upload">Total upload</string>
+
+    <string name="stats_live_speed">Live speed</string>
+    <string name="stats_last_two_minutes">Last 2 minutes</string>
+    <string name="stats_session_time">Session time</string>
+    <string name="stats_session_data">Session data</string>
+    <string name="stats_peak_speed">Peak speed</string>
+    <string name="stats_avg_ping">Avg ping</string>
+    <string name="stats_latency">Latency</string>
+    <string name="stats_min">Min</string>
+    <string name="stats_avg">Avg</string>
+    <string name="stats_now">Now</string>
+    <string name="stats_daily_usage">Daily usage</string>
+    <string name="stats_this_week">This week</string>
+    <string name="stats_connections">Connections</string>
+    <string name="stats_success_rate">Success rate</string>
+    <string name="stats_avg_connect">Avg time to connect</string>
+    <string name="stats_total_sessions">Sessions</string>
+    <string name="stats_protected_time">Time protected</string>
+    <string name="stats_protocols">Protocols used</string>
+    <string name="stats_recent">Recent sessions</string>
+    <string name="stats_failed">Failed</string>
+    <string name="stats_all_time">All time</string>
+    <string name="stats_no_data">No data yet. Connect to start collecting stats.</string>
+
+    <string name="stats_rel_just_now">just now</string>
+    <string name="stats_rel_minutes">%1$d min ago</string>
+    <string name="stats_rel_hours">%1$d hr ago</string>
+    <string name="stats_rel_days">%1$d d ago</string>
+</resources>

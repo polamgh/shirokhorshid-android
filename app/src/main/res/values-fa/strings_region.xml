@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Region picker redesign (ported from iOS RegionPickerSheet) -->
+    <string name="region2_title">منطقه خروجی</string>
+    <string name="region2_subtitle">انتخاب کنید ترافیک شما از کدام کشور وارد اینترنت شود</string>
+    <string name="region2_best_title">خودکار (بهترین)</string>
+    <string name="region2_best_subtitle">سریع‌ترین سرور در دسترس خودکار انتخاب می‌شود</string>
+    <string name="region2_search">جستجوی کشور</string>
+    <string name="region2_no_results">کشوری پیدا نشد</string>
+    <string name="region2_group_europe">اروپا</string>
+    <string name="region2_group_americas">قاره آمریکا</string>
+    <string name="region2_group_asia_pacific">آسیا و اقیانوسیه</string>
+    <string name="region2_group_mideast_africa">خاورمیانه و آفریقا</string>
+    <string name="region2_group_other">سایر</string>
+    <string name="region2_close">بستن</string>
+    <string name="region2_clear_search">پاک کردن جستجو</string>
+</resources>

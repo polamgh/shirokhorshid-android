@@ -11,12 +11,22 @@ data class PublicGeoInfo(
     val ip: String = "—",
     val city: String = "",
     val countryName: String = "",
-    val countryCode: String = ""
+    val countryCode: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null
 ) {
     fun hasLocation(): Boolean = city.isNotBlank() || countryName.isNotBlank()
 
     fun isUsable(): Boolean = ip != "—" && ip.isNotBlank()
+
+    fun hasCoordinates(): Boolean =
+        latitude != null && longitude != null &&
+            latitude in -90.0..90.0 && longitude in -180.0..180.0 &&
+            !(latitude == 0.0 && longitude == 0.0)
 }
+
+private fun JSONObject.optCoordinate(name: String): Double? =
+    if (has(name) && !isNull(name)) optDouble(name).takeIf { !it.isNaN() } else null
 
 object PublicGeoLookup {
     private const val USER_AGENT = "AzadiTunnel/1.0"
@@ -78,7 +88,9 @@ object PublicGeoLookup {
             ip = json.optString("ip"),
             city = json.optString("city"),
             countryName = json.optString("country"),
-            countryCode = json.optString("country_code")
+            countryCode = json.optString("country_code"),
+            latitude = json.optCoordinate("latitude"),
+            longitude = json.optCoordinate("longitude")
         )
     }
 
@@ -88,7 +100,9 @@ object PublicGeoLookup {
             ip = json.optString("ipAddress"),
             city = json.optString("cityName"),
             countryName = json.optString("countryName"),
-            countryCode = json.optString("countryCode")
+            countryCode = json.optString("countryCode"),
+            latitude = json.optCoordinate("latitude"),
+            longitude = json.optCoordinate("longitude")
         )
     }
 
@@ -99,7 +113,9 @@ object PublicGeoLookup {
             ip = json.optString("ip"),
             city = json.optString("city"),
             countryName = json.optString("country_name"),
-            countryCode = json.optString("country_code")
+            countryCode = json.optString("country_code"),
+            latitude = json.optCoordinate("latitude"),
+            longitude = json.optCoordinate("longitude")
         )
     }
 
@@ -136,7 +152,9 @@ object PublicGeoLookup {
             ip = incoming.ip.takeIf { it.isNotBlank() && it != "—" } ?: current.ip,
             city = incoming.city.takeIf { it.isNotBlank() } ?: current.city,
             countryName = incoming.countryName.takeIf { it.isNotBlank() } ?: current.countryName,
-            countryCode = incoming.countryCode.takeIf { it.isNotBlank() } ?: current.countryCode
+            countryCode = incoming.countryCode.takeIf { it.isNotBlank() } ?: current.countryCode,
+            latitude = if (incoming.hasCoordinates()) incoming.latitude else current.latitude,
+            longitude = if (incoming.hasCoordinates()) incoming.longitude else current.longitude
         )
     }
 
@@ -145,7 +163,14 @@ object PublicGeoLookup {
         val city = info.city.trim()
         val code = info.countryCode.trim().uppercase(Locale.US)
         val country = localizedCountryName(info.countryName.trim(), code)
-        return PublicGeoInfo(ip = ip, city = city, countryName = country, countryCode = code)
+        return PublicGeoInfo(
+            ip = ip,
+            city = city,
+            countryName = country,
+            countryCode = code,
+            latitude = info.latitude,
+            longitude = info.longitude
+        )
     }
 
     private fun localizedCountryName(countryName: String, countryCode: String): String {

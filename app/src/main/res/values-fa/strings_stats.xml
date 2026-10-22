@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stats tab (ported from iOS StatisticsView / L10n stats keys) -->
+    <string name="stats_tab">آمار</string>
+    <string name="stats_title">آمار</string>
+
+    <string name="stats_status_connected">متصل</string>
+    <string name="stats_status_connecting">در حال اتصال…</string>
+    <string name="stats_status_disconnected">قطع</string>
+    <string name="stats_status_failed">خطا</string>
+
+    <string name="stats_download">دانلود</string>
+    <string name="stats_upload">آپلود</string>
+    <string name="stats_total_download">مجموع دانلود</string>
+    <string name="stats_total_upload">مجموع آپلود</string>
+
+    <string name="stats_live_speed">سرعت لحظه‌ای</string>
+    <string name="stats_last_two_minutes">۲ دقیقه اخیر</string>
+    <string name="stats_session_time">زمان اتصال</string>
+    <string name="stats_session_data">داده این اتصال</string>
+    <string name="stats_peak_speed">بیشترین سرعت</string>
+    <string name="stats_avg_ping">میانگین پینگ</string>
+    <string name="stats_latency">تأخیر (پینگ)</string>
+    <string name="stats_min">کمترین</string>
+    <string name="stats_avg">میانگین</string>
+    <string name="stats_now">اکنون</string>
+    <string name="stats_daily_usage">مصرف روزانه</string>
+    <string name="stats_this_week">این هفته</string>
+    <string name="stats_connections">اتصال‌ها</string>
+    <string name="stats_success_rate">نرخ موفقیت</string>
+    <string name="stats_avg_connect">میانگین زمان وصل شدن</string>
+    <string name="stats_total_sessions">تعداد اتصال</string>
+    <string name="stats_protected_time">زمان محافظت‌شده</string>
+    <string name="stats_protocols">پروتکل‌های استفاده‌شده</string>
+    <string name="stats_recent">اتصال‌های اخیر</string>
+    <string name="stats_failed">ناموفق</string>
+    <string name="stats_all_time">از ابتدا</string>
+    <string name="stats_no_data">هنوز داده‌ای نیست. وصل شوید تا آمار جمع شود.</string>
+
+    <string name="stats_rel_just_now">همین الان</string>
+    <string name="stats_rel_minutes">%1$d دقیقه پیش</string>
+    <string name="stats_rel_hours">%1$d ساعت پیش</string>
+    <string name="stats_rel_days">%1$d روز پیش</string>
+</resources>

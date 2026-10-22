@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings for the iOS-parity Settings / About redesign (wording mirrors the iOS L10n tables). -->
+<resources>
+    <string name="settings2_back">Back</string>
+    <string name="settings2_custom">Custom</string>
+    <string name="settings2_network_tools">Network tools</string>
+    <string name="settings2_upstream_proxy">Upstream proxy</string>
+    <string name="settings2_about_company_label">Company</string>
+    <string name="settings2_about_company_value">Debugsy Inc.</string>
+    <string name="settings2_about_app_version_label">App Version</string>
+    <string name="settings2_about_rate_us">Rate Us</string>
+    <string name="settings2_about_x">X</string>
+    <string name="settings2_about_contact_us">Contact Us</string>
+    <string name="settings2_about_psiphon_website">Psiphon (psiphon.ca)</string>
+    <string name="settings2_about_copyright">© %1$d Debugsy Inc. All rights reserved.</string>
+</resources>

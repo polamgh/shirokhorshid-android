@@ -24,6 +24,13 @@ This file lists third-party software used by AzadiTunnel.
 - **License:** See upstream repository  
 - **Use:** Forward `NEPacketTunnelFlow` traffic to local Psiphon SOCKS proxy  
 
+## Grand Hotel font
+
+- **Author:** Brian J. Bonislawsky and Jim Lyles (Astigmatic)
+- **Source:** https://github.com/google/fonts/tree/main/ofl/grandhotel
+- **License:** SIL Open Font License 1.1 (full text: `assets/legal/GrandHotel-OFL.txt`)
+- **Use:** "AzadiTunnel" wordmark. Bundled unmodified.
+
 ## Apple system frameworks
 
 - NetworkExtension, Network, SwiftUI — Apple SDK license terms apply.

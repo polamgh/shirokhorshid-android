@@ -45,6 +45,13 @@ object LegalNoticesCatalog {
             licenseNeedsVerification = true
         ),
         OpenSourceComponent(
+            id = "grand-hotel-font",
+            name = "Grand Hotel font",
+            license = "SIL Open Font License 1.1",
+            sourceUrl = "https://github.com/google/fonts/tree/main/ofl/grandhotel",
+            description = "Script typeface used for the AzadiTunnel wordmark. Bundled unmodified."
+        ),
+        OpenSourceComponent(
             id = "geolite2-country",
             name = "GeoLite2 Country database (MMDB)",
             license = "MaxMind GeoLite2 License (needs verification)",

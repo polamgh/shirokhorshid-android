@@ -46,66 +46,7 @@ enum class LaunchPhase {
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
-    var startAnimation by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0.4f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "LogoScale"
-    )
-
-    val alpha by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = 800),
-        label = "ContentAlpha"
-    )
-
-    LaunchedEffect(Unit) {
-        startAnimation = true
-        delay(1800)
-        onFinished()
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppColors.Background),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(R.drawable.ic_app_logo),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .scale(scale)
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.alpha(alpha)
-            ) {
-                Text(
-                    text = stringResource(R.string.app_name),
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                IranFlagStripe(modifier = Modifier.width(120.dp))
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.azadi_splash_tagline),
-                    color = AppColors.SubtitleText,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
+    com.psiphon3.ui.redesign.AzadiSplash(onFinished = onFinished)
 }
 
 @Composable

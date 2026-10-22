@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dash2_protected">Protected</string>
+    <string name="dash2_unprotected">Not protected</string>
+    <string name="dash2_details">Details</string>
+    <string name="dash2_hide_details">Hide details</string>
+    <string name="dash2_total">Total</string>
+    <string name="dash2_ping">Ping</string>
+    <string name="dash2_copied">Copied to clipboard</string>
+    <string name="dash2_slow_title">Connection is taking longer than usual</string>
+    <string name="dash2_slow_message">First, try another protocol. If that does not work, change the region, disconnect, and connect again to test it.</string>
+    <string name="dash2_splash_tagline">Privacy-focused tunnel for a more open internet</string>
+    <string name="dash2_copy">Copy</string>
+</resources>

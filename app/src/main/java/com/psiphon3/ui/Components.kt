@@ -1,5 +1,7 @@
 package com.psiphon3.ui
 
+import com.psiphon3.ui.redesign.FitText
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -594,6 +596,7 @@ fun AzadiFloatingBottomNav(
     selectedTab: Int,
     onVpnClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onStatsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -625,6 +628,13 @@ fun AzadiFloatingBottomNav(
                 label = stringResource(R.string.dashboard_tab_vpn),
                 selectedColor = AppColors.NavBlue,
                 onClick = onVpnClick
+            )
+            BottomNavItem(
+                selected = selectedTab == 2,
+                icon = Icons.Default.QueryStats,
+                label = stringResource(R.string.stats_tab),
+                selectedColor = AppColors.NavBlue,
+                onClick = onStatsClick
             )
             BottomNavItem(
                 selected = selectedTab == 1,
@@ -663,7 +673,7 @@ private fun BottomNavItem(
             modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.height(1.dp))
-        Text(
+        FitText(
             label,
             color = if (selected) selectedColor else Color.White.copy(0.65f),
             fontSize = 10.sp,

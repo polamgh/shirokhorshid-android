@@ -49,6 +49,7 @@ import com.psiphon3.log.LogsMaintenanceWorker
 import com.psiphon3.psiphonlibrary.*
 import com.psiphon3.ui.*
 import com.psiphon3.ui.azadi.*
+import com.psiphon3.ui.redesign.*
 import com.psiphon3.ui.theme.AppColors
 import com.psiphon3.ui.theme.AzadiTunnelTheme
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -81,6 +82,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
         multiProcessPreferences = AppPreferences(this)
         azadiSettingsStore = AzadiSettingsStore(this)
         TunnelStatisticsStore.init(this)
+        StatsHistoryStore.init(this)
         connectionCoordinator = ConnectionCoordinator(
             context = this,
             settingsStore = azadiSettingsStore,
@@ -167,6 +169,9 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                 var ipAddress by remember { mutableStateOf("—") }
                 var connectedCity by remember { mutableStateOf("") }
                 var connectedCountry by remember { mutableStateOf("") }
+                var connectedCountryCode by remember { mutableStateOf("") }
+                var connectedCoordinate by remember { mutableStateOf<MapCoordinate?>(null) }
+                var originGeo by remember { mutableStateOf(OriginGeoStore.load(this@MainActivity)) }
                 var durationText by remember { mutableStateOf("00:00:00") }
 
                 val selectedRegionCode = azadiSettings.egressRegion.ifEmpty { PsiphonConstants.REGION_CODE_ANY }
@@ -210,6 +215,8 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                         ipAddress = "—"
                         connectedCity = ""
                         connectedCountry = ""
+                        connectedCountryCode = ""
+                        connectedCoordinate = null
                         geoLookupAttempt = 0
                         return@LaunchedEffect
                     }
@@ -220,7 +227,8 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
 
                     val needsGeo = ipAddress == "—" ||
                         connectedCity.isBlank() ||
-                        connectedCountry.isBlank()
+                        connectedCountry.isBlank() ||
+                        connectedCoordinate == null
                     if (!needsGeo) return@LaunchedEffect
 
                     delay(1200L + geoLookupAttempt * 1500L)
@@ -229,17 +237,92 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                     if (geo.ip.isNotBlank() && geo.ip != "—") ipAddress = geo.ip
                     if (geo.city.isNotBlank()) connectedCity = geo.city
                     if (geo.countryName.isNotBlank()) connectedCountry = geo.countryName
+                    if (geo.countryCode.isNotBlank()) connectedCountryCode = geo.countryCode
+                    if (geo.hasCoordinates()) connectedCoordinate = MapCoordinate(geo.latitude!!, geo.longitude!!)
 
                     if ((connectedCity.isBlank() || connectedCountry.isBlank()) && geo.isUsable()) {
                         val enriched = withContext(Dispatchers.IO) { PublicGeoLookup.lookupByIp(geo.ip) }
                         if (enriched.city.isNotBlank()) connectedCity = enriched.city
                         if (enriched.countryName.isNotBlank()) connectedCountry = enriched.countryName
+                        if (enriched.countryCode.isNotBlank()) connectedCountryCode = enriched.countryCode
+                        if (enriched.hasCoordinates()) {
+                            connectedCoordinate = MapCoordinate(enriched.latitude!!, enriched.longitude!!)
+                        }
                     }
 
                     if ((connectedCity.isBlank() || connectedCountry.isBlank()) && geoLookupAttempt < 2) {
                         geoLookupAttempt++
                     }
                 }
+
+                // Stats tab history: one sample per second, plus connection lifecycle events.
+                val statsConnected by rememberUpdatedState(connectionStatus == VpnConnectionStatus.CONNECTED)
+                val statsProtocol by rememberUpdatedState(tunnelStats.connectedTunnelProtocol)
+                val statsLifetimeDown by rememberUpdatedState(lifetimeDownload)
+                val statsLifetimeUp by rememberUpdatedState(lifetimeUpload)
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        val ui = DataTransferStats.getDataTransferStatsForUI()
+                        val up = statsConnected
+                        StatsHistoryStore.tick(
+                            isConnected = up,
+                            downloadBytesPerSec = if (up) TunnelServiceInteractor.lastDownloadSpeedBytes else 0L,
+                            uploadBytesPerSec = if (up) TunnelServiceInteractor.lastUploadSpeedBytes else 0L,
+                            sessionDown = ui.totalBytesReceived,
+                            sessionUp = ui.totalBytesSent,
+                            tunnelProtocol = statsProtocol,
+                            lifetimeDown = statsLifetimeDown,
+                            lifetimeUp = statsLifetimeUp
+                        )
+                        delay(1000)
+                    }
+                }
+                LaunchedEffect(connectionStatus) {
+                    when (connectionStatus) {
+                        VpnConnectionStatus.CONNECTING, VpnConnectionStatus.WAITING_FOR_NETWORK ->
+                            StatsHistoryStore.onConnectAttempt()
+                        VpnConnectionStatus.CONNECTED -> StatsHistoryStore.onConnected(
+                            tunnelStats.connectedTunnelProtocol,
+                            DataTransferStats.getDataTransferStatsForUI().elapsedTime,
+                            selectedRegionCode.takeIf { it != PsiphonConstants.REGION_CODE_ANY } ?: ""
+                        )
+                        VpnConnectionStatus.DISCONNECTED -> StatsHistoryStore.onDisconnected(false)
+                        VpnConnectionStatus.ERROR -> StatsHistoryStore.onDisconnected(true)
+                        VpnConnectionStatus.WAITING -> Unit
+                    }
+                }
+                LaunchedEffect(connectedCountryCode) {
+                    if (connectedCountryCode.isNotBlank()) StatsHistoryStore.setSessionCountry(connectedCountryCode)
+                }
+
+                // The map's origin: where this device is before it connects (never the egress).
+                LaunchedEffect(connectionStatus) {
+                    if (connectionStatus != VpnConnectionStatus.DISCONNECTED &&
+                        connectionStatus != VpnConnectionStatus.ERROR
+                    ) return@LaunchedEffect
+                    delay(800)
+                    val geo = withContext(Dispatchers.IO) { PublicGeoLookup.lookup() }
+                    val stillOffline = deriveConnectionStatus(tunnelStateState.value ?: TunnelState.stopped()) ==
+                        VpnConnectionStatus.DISCONNECTED
+                    if (geo.isUsable() && stillOffline) {
+                        OriginGeoStore.save(this@MainActivity, geo)
+                        originGeo = OriginGeoStore.load(this@MainActivity)
+                    }
+                }
+
+                val mapState = DashboardMapState(
+                    origin = originGeo?.let { o ->
+                        if (o.latitude != null && o.longitude != null) MapCoordinate(o.latitude, o.longitude)
+                        else WorldMapLocations.centroid(o.countryCode)
+                    },
+                    originCountryCode = originGeo?.countryCode?.takeIf { it.isNotBlank() },
+                    destination = if (isConnected) {
+                        connectedCoordinate
+                            ?: WorldMapLocations.centroid(connectedCountryCode)
+                            ?: WorldMapLocations.centroid(selectedRegionCode)
+                    } else null,
+                    destinationCountryCode = connectedCountryCode.takeIf { isConnected && it.isNotBlank() }
+                )
 
                 val connectedLocationLine = if (isConnected) {
                     resolveConnectedLocationLine(
@@ -290,7 +373,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                     else -> stringResource(R.string.dashboard_disconnected)
                 }
 
-                val trafficStats = remember(connectionStatus, dataStats, ipAddress, connectedCity, connectedCountry, lifetimeDownload, lifetimeUpload) {
+                val trafficStats = remember(connectionStatus, dataStats, ipAddress, connectedCity, connectedCountry, lifetimeDownload, lifetimeUpload, originGeo) {
                     if (connectionStatus == VpnConnectionStatus.CONNECTED) {
                         TrafficStats(
                             downloadSpeed = Utils.byteCountToDisplaySize(TunnelServiceInteractor.lastDownloadSpeedBytes, true) + "/s",
@@ -306,7 +389,8 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                             uploadSpeed = "0 B/s",
                             totalDownload = Utils.byteCountToDisplaySize(lifetimeDownload, false),
                             totalUpload = Utils.byteCountToDisplaySize(lifetimeUpload, false),
-                            ipAddress = "—",
+                            // Disconnected: show the exposed origin IP, like iOS.
+                            ipAddress = originGeo?.ip?.takeIf { it.isNotBlank() } ?: "—",
                             connectedCountry = ""
                         )
                     }
@@ -422,7 +506,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                         settingsDestination != SettingsDestination.ROOT -> {
                             settingsDestination = SettingsDestination.ROOT
                         }
-                        currentTab == 1 -> {
+                        currentTab != 0 -> {
                             currentTab = 0
                             settingsDestination = SettingsDestination.ROOT
                         }
@@ -517,8 +601,20 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                                 onRetryClick = { scope.launch { performConnect() } },
                                 onOpenLogs = { settingsDestination = SettingsDestination.LOGS },
                                 onSupportClick = { settingsDestination = SettingsDestination.SUPPORT },
-                                trafficStats = trafficStats
+                                trafficStats = trafficStats,
+                                mapState = mapState,
+                                protocolSelection = azadiSettings.protocolSelection,
+                                conduitAllowed = azadiSettingsStore.conduitConnectAllowed(),
+                                onProtocolSelected = { selection ->
+                                    if (selection != azadiSettings.protocolSelection) {
+                                        azadiSettings = azadiSettingsStore.saveField(azadiSettings) {
+                                            it.copy(protocolSelection = selection)
+                                        }
+                                        AzadiEventLogger.logSync("DASHBOARD_PROTOCOL_SELECTION", selection)
+                                    }
+                                }
                             )
+                            currentTab == 2 && !inLaunchFlow -> com.psiphon3.ui.stats.StatisticsScreen()
                             currentTab == 1 && !inLaunchFlow -> AzadiSettingsScreen(
                                 viewModel = viewModel,
                                 settingsStore = azadiSettingsStore,
@@ -623,6 +719,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                             AzadiFloatingBottomNav(
                                 selectedTab = currentTab,
                                 onVpnClick = { currentTab = 0; settingsDestination = SettingsDestination.ROOT },
+                                onStatsClick = { currentTab = 2; settingsDestination = SettingsDestination.ROOT },
                                 onSettingsClick = { currentTab = 1; settingsDestination = SettingsDestination.ROOT },
                                 modifier = Modifier.align(Alignment.BottomCenter)
                             )
@@ -678,6 +775,7 @@ class MainActivity : LocalizedActivities.AppCompatActivity() {
                 .blockingGet()
         }
         if (state.isRunning) {
+            if (state.connectionData()?.isConnected != true) StatsHistoryStore.onConnectCancelled()
             connectionCoordinator.disconnect(interactor)
         } else {
             performConnect()
